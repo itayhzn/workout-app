@@ -1,0 +1,385 @@
+[
+  {
+    "id": "db-bench-press",
+    "name": "Dumbbell Bench Press",
+    "type": "strength",
+    "tips": [
+      "Elbows at about 45° from your body",
+      "Shoulder blades squeezed back and down",
+      "Lower under control to chest level"
+    ]
+  },
+  {
+    "id": "overhead-press",
+    "name": "Barbell Overhead Press",
+    "type": "strength",
+    "tips": [
+      "Brace glutes and abs before every rep",
+      "Keep the bar path close to your face",
+      "At the top, push your head through and pause briefly"
+    ]
+  },
+  {
+    "id": "incline-db-press",
+    "name": "Incline Dumbbell Press",
+    "type": "strength",
+    "tips": [
+      "Bench at 30–45°",
+      "Control the descent, press up and slightly in"
+    ]
+  },
+  {
+    "id": "cable-fly",
+    "name": "Cable Fly",
+    "type": "strength",
+    "tips": [
+      "Slight, fixed bend in the elbows",
+      "Bring hands together at chest height and squeeze"
+    ]
+  },
+  {
+    "id": "lateral-raise",
+    "name": "Lateral Raise",
+    "type": "strength",
+    "tips": [
+      "Raise both arms together, slightly forward of your body",
+      "Lead with the elbows and stop at shoulder height",
+      "Keep a slight bend in the elbows"
+    ]
+  },
+  {
+    "id": "skull-crusher",
+    "name": "Skull Crusher",
+    "type": "strength",
+    "tips": [
+      "Upper arms stay still, pointing slightly back",
+      "Lower the bar toward your forehead under control"
+    ]
+  },
+  {
+    "id": "rope-pushdown",
+    "name": "Rope Triceps Pushdown",
+    "type": "strength",
+    "tips": [
+      "Elbows pinned to your sides",
+      "Spread the rope apart at the bottom"
+    ]
+  },
+  {
+    "id": "pull-ups",
+    "name": "Pull Ups",
+    "type": "strength",
+    "tips": [
+      "Retract your shoulder blades first, then pull",
+      "Full dead hang at the bottom",
+      "No kipping"
+    ]
+  },
+  {
+    "id": "barbell-row",
+    "name": "Barbell Row",
+    "type": "strength",
+    "tips": [
+      "Hands shoulder-width apart",
+      "Hinge at the hips with a flat back",
+      "Lift the bar to knee height, then row it to your navel",
+      "Use an overhand grip for 2 sets and an underhand grip for 2"
+    ]
+  },
+  {
+    "id": "lat-pulldown",
+    "name": "Lat Pulldown",
+    "type": "strength",
+    "tips": [
+      "Lean back slightly",
+      "Drive the elbows down toward your hips"
+    ]
+  },
+  {
+    "id": "one-arm-db-row",
+    "name": "One-Arm Dumbbell Row",
+    "type": "strength",
+    "tips": [
+      "Sets are per arm",
+      "Brace on a bench with a flat back",
+      "Pull the dumbbell toward your hip"
+    ]
+  },
+  {
+    "id": "face-pulls",
+    "name": "Face Pulls",
+    "type": "strength",
+    "tips": [
+      "Rope at upper-chest height or higher",
+      "Pull toward your forehead with hands apart",
+      "Squeeze the shoulder blades at the end"
+    ]
+  },
+  {
+    "id": "ez-bar-curl",
+    "name": "EZ-Bar Curl",
+    "type": "strength",
+    "tips": [
+      "Elbows stay at your sides",
+      "No swinging — control the way down"
+    ]
+  },
+  {
+    "id": "hammer-curl",
+    "name": "Hammer Curl",
+    "type": "strength",
+    "tips": [
+      "Alternate arms",
+      "Neutral grip, thumbs up"
+    ]
+  },
+  {
+    "id": "smith-squat",
+    "name": "Smith Machine Squat",
+    "type": "strength",
+    "tips": [
+      "Feet slightly in front of the bar",
+      "Brace, then sit down between your hips",
+      "Drive up through the whole foot"
+    ]
+  },
+  {
+    "id": "romanian-deadlift",
+    "name": "Romanian Deadlift",
+    "type": "strength",
+    "tips": [
+      "Soft knees, push the hips back",
+      "Bar stays close to your legs",
+      "Stop when you feel a strong hamstring stretch"
+    ]
+  },
+  {
+    "id": "bulgarian-split-squat",
+    "name": "Bulgarian Split Squat",
+    "type": "strength",
+    "tips": [
+      "Sets are per leg",
+      "Rear foot on the bench, front shin roughly vertical",
+      "Lower straight down under control"
+    ]
+  },
+  {
+    "id": "leg-curl",
+    "name": "Leg Curl",
+    "type": "strength",
+    "tips": [
+      "Pause briefly at full contraction",
+      "Control the way back"
+    ]
+  },
+  {
+    "id": "leg-extension",
+    "name": "Leg Extension",
+    "type": "strength",
+    "tips": [
+      "Pause at the top",
+      "Don't let the weight stack slam"
+    ]
+  },
+  {
+    "id": "calf-raise",
+    "name": "Standing Calf Raise",
+    "type": "strength",
+    "tips": [
+      "Put two plates under the balls of your feet for a full stretch",
+      "Pause at the bottom and at the top"
+    ]
+  },
+  {
+    "id": "running",
+    "name": "Running",
+    "type": "cardio",
+    "tips": [
+      "Start the first kilometer easy",
+      "Relaxed shoulders, quick light steps"
+    ]
+  },
+  {
+    "id": "walking",
+    "name": "Walking",
+    "type": "cardio",
+    "tips": [
+      "Brisk, comfortable pace",
+      "Good excuse to get outside"
+    ]
+  },
+  {
+    "id": "freestyle-easy",
+    "name": "Freestyle — Easy",
+    "type": "swimming",
+    "tips": [
+      "Relaxed, long strokes",
+      "Focus on exhaling fully underwater"
+    ]
+  },
+  {
+    "id": "freestyle-intervals",
+    "name": "Freestyle — Main Set",
+    "type": "swimming",
+    "tips": [
+      "10 × 100 m at a steady, strong pace",
+      "Rest ~20 s at the wall between repeats",
+      "Breathe every 3 strokes if you can"
+    ]
+  },
+  {
+    "id": "crunches",
+    "name": "Crunches",
+    "type": "strength",
+    "tips": [
+      "Lift the shoulder blades, not the neck",
+      "Exhale on the way up"
+    ]
+  },
+  {
+    "id": "bicycle-crunches",
+    "name": "Bicycle Crunches",
+    "type": "strength",
+    "tips": [
+      "Elbow toward the opposite knee",
+      "Slow and controlled beats fast"
+    ]
+  },
+  {
+    "id": "lying-leg-raises",
+    "name": "Lying Leg Raises",
+    "type": "strength",
+    "tips": [
+      "Lower back pressed into the floor",
+      "Lower the legs slowly"
+    ]
+  },
+  {
+    "id": "russian-twists",
+    "name": "Russian Twists",
+    "type": "strength",
+    "tips": [
+      "Lean back with a straight spine",
+      "Rotate from the torso, not just the arms"
+    ]
+  },
+  {
+    "id": "mountain-climbers",
+    "name": "Mountain Climbers",
+    "type": "strength",
+    "tips": [
+      "Hips level with the shoulders",
+      "Drive the knees toward the chest"
+    ]
+  },
+  {
+    "id": "dead-bug",
+    "name": "Dead Bug",
+    "type": "strength",
+    "tips": [
+      "Lower back stays on the floor",
+      "Opposite arm and leg move together"
+    ]
+  },
+  {
+    "id": "plank",
+    "name": "Plank",
+    "type": "strength",
+    "tips": [
+      "Squeeze glutes and abs",
+      "Straight line from head to heels"
+    ]
+  },
+  {
+    "id": "side-plank",
+    "name": "Side Plank",
+    "type": "strength",
+    "tips": [
+      "Set 1 left side, set 2 right side",
+      "Hips high, body in one line"
+    ]
+  },
+  {
+    "id": "hollow-hold",
+    "name": "Hollow Body Hold",
+    "type": "strength",
+    "tips": [
+      "Lower back glued to the floor",
+      "Bend the knees to make it easier"
+    ]
+  },
+  {
+    "id": "cat-cow",
+    "name": "Cat-Cow",
+    "type": "mobility",
+    "tips": [
+      "Move slowly with your breath",
+      "Round and arch through the whole spine"
+    ]
+  },
+  {
+    "id": "worlds-greatest-stretch",
+    "name": "World's Greatest Stretch",
+    "type": "mobility",
+    "tips": [
+      "Set 1 left side, set 2 right side",
+      "Lunge, elbow to instep, then rotate and reach up"
+    ]
+  },
+  {
+    "id": "hip-flexor-stretch",
+    "name": "Half-Kneeling Hip Flexor Stretch",
+    "type": "mobility",
+    "tips": [
+      "Set 1 left side, set 2 right side",
+      "Squeeze the glute of the back leg",
+      "Tuck the pelvis — don't arch the lower back"
+    ]
+  },
+  {
+    "id": "hip-90-90",
+    "name": "90/90 Hip Switches",
+    "type": "mobility",
+    "tips": [
+      "Sit tall",
+      "Rotate both knees side to side slowly"
+    ]
+  },
+  {
+    "id": "open-book",
+    "name": "Open Book Rotation",
+    "type": "mobility",
+    "tips": [
+      "Set 1 left side, set 2 right side",
+      "Lie on your side, knees stacked",
+      "Open the top arm and follow it with your eyes"
+    ]
+  },
+  {
+    "id": "down-dog-cobra",
+    "name": "Downward Dog to Cobra",
+    "type": "mobility",
+    "tips": [
+      "Flow slowly between the two positions",
+      "Press the heels toward the floor in down dog"
+    ]
+  },
+  {
+    "id": "hamstring-fold",
+    "name": "Standing Forward Fold",
+    "type": "mobility",
+    "tips": [
+      "Soft knees, let the head hang",
+      "Breathe into the stretch"
+    ]
+  },
+  {
+    "id": "deep-squat-hold",
+    "name": "Deep Squat Hold",
+    "type": "mobility",
+    "tips": [
+      "Heels down, chest up",
+      "Push the knees out with the elbows"
+    ]
+  }
+]

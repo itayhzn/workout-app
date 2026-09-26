@@ -1,0 +1,30 @@
+{
+  "monday": [
+    "run-5k-abs",
+    "daily-mobility"
+  ],
+  "tuesday": [
+    "swim-30",
+    "daily-mobility"
+  ],
+  "wednesday": [
+    "legs",
+    "daily-mobility"
+  ],
+  "thursday": [
+    "pull",
+    "daily-mobility"
+  ],
+  "friday": [
+    "long-run-10k",
+    "daily-mobility"
+  ],
+  "saturday": [
+    "walk-30",
+    "daily-mobility"
+  ],
+  "sunday": [
+    "push",
+    "daily-mobility"
+  ]
+}
