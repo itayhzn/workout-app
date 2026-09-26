@@ -1,0 +1,498 @@
+[
+  {
+    "id": "push",
+    "name": "Push",
+    "type": "strength",
+    "exercises": [
+      {
+        "id": "push-1",
+        "exerciseId": "db-bench-press",
+        "target": {
+          "kind": "strength",
+          "sets": 4,
+          "reps": 8,
+          "weightKg": 22.5,
+          "restSeconds": 120
+        }
+      },
+      {
+        "id": "push-2",
+        "exerciseId": "overhead-press",
+        "target": {
+          "kind": "strength",
+          "sets": 3,
+          "reps": 6,
+          "weightKg": 30,
+          "restSeconds": 120
+        }
+      },
+      {
+        "id": "push-3",
+        "exerciseId": "incline-db-press",
+        "target": {
+          "kind": "strength",
+          "sets": 3,
+          "reps": 10,
+          "weightKg": 18,
+          "restSeconds": 90
+        }
+      },
+      {
+        "id": "push-4",
+        "exerciseId": "cable-fly",
+        "target": {
+          "kind": "strength",
+          "sets": 3,
+          "reps": 12,
+          "weightKg": 30,
+          "restSeconds": 75
+        }
+      },
+      {
+        "id": "push-5",
+        "exerciseId": "lateral-raise",
+        "target": {
+          "kind": "strength",
+          "sets": 3,
+          "reps": 12,
+          "weightKg": 6,
+          "restSeconds": 60
+        }
+      },
+      {
+        "id": "push-6",
+        "exerciseId": "skull-crusher",
+        "target": {
+          "kind": "strength",
+          "sets": 3,
+          "reps": 10,
+          "weightKg": 8,
+          "restSeconds": 75
+        }
+      },
+      {
+        "id": "push-7",
+        "exerciseId": "rope-pushdown",
+        "target": {
+          "kind": "strength",
+          "sets": 3,
+          "reps": 12,
+          "weightKg": 30,
+          "restSeconds": 60
+        }
+      }
+    ]
+  },
+  {
+    "id": "run-5k-abs",
+    "name": "Run 5K + Abs",
+    "type": "mixed",
+    "exercises": [
+      {
+        "id": "run-5k-abs-1",
+        "exerciseId": "running",
+        "target": {
+          "kind": "cardio",
+          "distanceKm": 5
+        }
+      },
+      {
+        "id": "run-5k-abs-2",
+        "exerciseId": "crunches",
+        "target": {
+          "kind": "timed",
+          "sets": 1,
+          "workSeconds": 30,
+          "restSeconds": 10
+        }
+      },
+      {
+        "id": "run-5k-abs-3",
+        "exerciseId": "bicycle-crunches",
+        "target": {
+          "kind": "timed",
+          "sets": 1,
+          "workSeconds": 30,
+          "restSeconds": 10
+        }
+      },
+      {
+        "id": "run-5k-abs-4",
+        "exerciseId": "lying-leg-raises",
+        "target": {
+          "kind": "timed",
+          "sets": 1,
+          "workSeconds": 30,
+          "restSeconds": 10
+        }
+      },
+      {
+        "id": "run-5k-abs-5",
+        "exerciseId": "russian-twists",
+        "target": {
+          "kind": "timed",
+          "sets": 1,
+          "workSeconds": 30,
+          "restSeconds": 10
+        }
+      },
+      {
+        "id": "run-5k-abs-6",
+        "exerciseId": "mountain-climbers",
+        "target": {
+          "kind": "timed",
+          "sets": 1,
+          "workSeconds": 30,
+          "restSeconds": 10
+        }
+      },
+      {
+        "id": "run-5k-abs-7",
+        "exerciseId": "dead-bug",
+        "target": {
+          "kind": "timed",
+          "sets": 1,
+          "workSeconds": 30,
+          "restSeconds": 10
+        }
+      },
+      {
+        "id": "run-5k-abs-8",
+        "exerciseId": "plank",
+        "target": {
+          "kind": "timed",
+          "sets": 1,
+          "workSeconds": 30,
+          "restSeconds": 10
+        }
+      },
+      {
+        "id": "run-5k-abs-9",
+        "exerciseId": "side-plank",
+        "target": {
+          "kind": "timed",
+          "sets": 2,
+          "workSeconds": 30,
+          "restSeconds": 10
+        }
+      },
+      {
+        "id": "run-5k-abs-10",
+        "exerciseId": "hollow-hold",
+        "target": {
+          "kind": "timed",
+          "sets": 1,
+          "workSeconds": 30,
+          "restSeconds": 0
+        }
+      }
+    ]
+  },
+  {
+    "id": "swim-30",
+    "name": "Swim 30",
+    "type": "aerobic",
+    "exercises": [
+      {
+        "id": "swim-30-1",
+        "exerciseId": "freestyle-easy",
+        "target": {
+          "kind": "swimming",
+          "durationMinutes": 5,
+          "distanceMeters": 200
+        }
+      },
+      {
+        "id": "swim-30-2",
+        "exerciseId": "freestyle-intervals",
+        "target": {
+          "kind": "swimming",
+          "durationMinutes": 20,
+          "distanceMeters": 1000
+        }
+      },
+      {
+        "id": "swim-30-3",
+        "exerciseId": "freestyle-easy",
+        "target": {
+          "kind": "swimming",
+          "durationMinutes": 5,
+          "distanceMeters": 200
+        }
+      }
+    ]
+  },
+  {
+    "id": "legs",
+    "name": "Legs",
+    "type": "strength",
+    "exercises": [
+      {
+        "id": "legs-1",
+        "exerciseId": "smith-squat",
+        "target": {
+          "kind": "strength",
+          "sets": 4,
+          "reps": 8,
+          "weightKg": 60,
+          "restSeconds": 150
+        }
+      },
+      {
+        "id": "legs-2",
+        "exerciseId": "romanian-deadlift",
+        "target": {
+          "kind": "strength",
+          "sets": 3,
+          "reps": 10,
+          "weightKg": 50,
+          "restSeconds": 120
+        }
+      },
+      {
+        "id": "legs-3",
+        "exerciseId": "bulgarian-split-squat",
+        "target": {
+          "kind": "strength",
+          "sets": 3,
+          "reps": 10,
+          "weightKg": 10,
+          "restSeconds": 90
+        }
+      },
+      {
+        "id": "legs-4",
+        "exerciseId": "leg-curl",
+        "target": {
+          "kind": "strength",
+          "sets": 3,
+          "reps": 10,
+          "weightKg": 35,
+          "restSeconds": 60
+        }
+      },
+      {
+        "id": "legs-5",
+        "exerciseId": "leg-extension",
+        "target": {
+          "kind": "strength",
+          "sets": 3,
+          "reps": 12,
+          "weightKg": 35,
+          "restSeconds": 60
+        }
+      },
+      {
+        "id": "legs-6",
+        "exerciseId": "calf-raise",
+        "target": {
+          "kind": "strength",
+          "sets": 4,
+          "reps": 12,
+          "weightKg": 30,
+          "restSeconds": 60
+        }
+      }
+    ]
+  },
+  {
+    "id": "pull",
+    "name": "Pull",
+    "type": "strength",
+    "exercises": [
+      {
+        "id": "pull-1",
+        "exerciseId": "pull-ups",
+        "target": {
+          "kind": "strength",
+          "sets": 3,
+          "reps": 8,
+          "restSeconds": 120
+        }
+      },
+      {
+        "id": "pull-2",
+        "exerciseId": "barbell-row",
+        "target": {
+          "kind": "strength",
+          "sets": 4,
+          "reps": 8,
+          "weightKg": 40,
+          "restSeconds": 120
+        }
+      },
+      {
+        "id": "pull-3",
+        "exerciseId": "lat-pulldown",
+        "target": {
+          "kind": "strength",
+          "sets": 3,
+          "reps": 10,
+          "weightKg": 30,
+          "restSeconds": 90
+        }
+      },
+      {
+        "id": "pull-4",
+        "exerciseId": "one-arm-db-row",
+        "target": {
+          "kind": "strength",
+          "sets": 3,
+          "reps": 10,
+          "weightKg": 6,
+          "restSeconds": 60
+        }
+      },
+      {
+        "id": "pull-5",
+        "exerciseId": "face-pulls",
+        "target": {
+          "kind": "strength",
+          "sets": 3,
+          "reps": 15,
+          "weightKg": 20,
+          "restSeconds": 60
+        }
+      },
+      {
+        "id": "pull-6",
+        "exerciseId": "ez-bar-curl",
+        "target": {
+          "kind": "strength",
+          "sets": 3,
+          "reps": 10,
+          "weightKg": 20,
+          "restSeconds": 60
+        }
+      },
+      {
+        "id": "pull-7",
+        "exerciseId": "hammer-curl",
+        "target": {
+          "kind": "strength",
+          "sets": 3,
+          "reps": 10,
+          "weightKg": 10,
+          "restSeconds": 60
+        }
+      }
+    ]
+  },
+  {
+    "id": "long-run-10k",
+    "name": "Long Run 10K",
+    "type": "aerobic",
+    "exercises": [
+      {
+        "id": "long-run-10k-1",
+        "exerciseId": "running",
+        "target": {
+          "kind": "cardio",
+          "distanceKm": 10
+        }
+      }
+    ]
+  },
+  {
+    "id": "walk-30",
+    "name": "Walk 30",
+    "type": "aerobic",
+    "exercises": [
+      {
+        "id": "walk-30-1",
+        "exerciseId": "walking",
+        "target": {
+          "kind": "cardio",
+          "durationMinutes": 30
+        }
+      }
+    ]
+  },
+  {
+    "id": "daily-mobility",
+    "name": "Daily Mobility",
+    "type": "mobility",
+    "exercises": [
+      {
+        "id": "daily-mobility-1",
+        "exerciseId": "cat-cow",
+        "target": {
+          "kind": "timed",
+          "sets": 1,
+          "workSeconds": 30,
+          "restSeconds": 5
+        }
+      },
+      {
+        "id": "daily-mobility-2",
+        "exerciseId": "worlds-greatest-stretch",
+        "target": {
+          "kind": "timed",
+          "sets": 2,
+          "workSeconds": 40,
+          "restSeconds": 5
+        }
+      },
+      {
+        "id": "daily-mobility-3",
+        "exerciseId": "hip-flexor-stretch",
+        "target": {
+          "kind": "timed",
+          "sets": 2,
+          "workSeconds": 40,
+          "restSeconds": 5
+        }
+      },
+      {
+        "id": "daily-mobility-4",
+        "exerciseId": "hip-90-90",
+        "target": {
+          "kind": "timed",
+          "sets": 1,
+          "workSeconds": 40,
+          "restSeconds": 5
+        }
+      },
+      {
+        "id": "daily-mobility-5",
+        "exerciseId": "open-book",
+        "target": {
+          "kind": "timed",
+          "sets": 2,
+          "workSeconds": 30,
+          "restSeconds": 5
+        }
+      },
+      {
+        "id": "daily-mobility-6",
+        "exerciseId": "down-dog-cobra",
+        "target": {
+          "kind": "timed",
+          "sets": 1,
+          "workSeconds": 40,
+          "restSeconds": 5
+        }
+      },
+      {
+        "id": "daily-mobility-7",
+        "exerciseId": "hamstring-fold",
+        "target": {
+          "kind": "timed",
+          "sets": 1,
+          "workSeconds": 40,
+          "restSeconds": 5
+        }
+      },
+      {
+        "id": "daily-mobility-8",
+        "exerciseId": "deep-squat-hold",
+        "target": {
+          "kind": "timed",
+          "sets": 1,
+          "workSeconds": 40,
+          "restSeconds": 0
+        }
+      }
+    ]
+  }
+]
