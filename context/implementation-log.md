@@ -3,7 +3,7 @@
 A record of what was built, the decisions made along the way, and the bugs found and fixed, newest first. For how the app works today, see [`dev-onboarding.md`](dev-onboarding.md).
 
 **Current state (2026-09-28)**
-- The code is on the `feature/workout-app` branch. Commit `0ad4a3b` contains everything up to and including entry 3. Entries 4–5 and the `context/` docs aren't committed yet.
+- The code is on the `feature/workout-app` branch and pushed. Commit `0ad4a3b` contains entries 1–3; `d51488a` contains entries 4–5 and the `context/` docs.
 - It hasn't been merged to `main`, and GitHub Pages isn't enabled on the repo yet. Once it's merged and Pages is set to "GitHub Actions", the site will be at `https://itayhzn.github.io/workout-app/`.
 - Tests: 72 passing (unit + integration). Typecheck and production build are clean.
 
