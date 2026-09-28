@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { canonicalWorkout, parseExercises, parseSchedule, parseWorkouts, toJson } from "../config";
+import { emptySchedule, weekdayOf } from "../schedule";
+import { WEEKDAYS } from "../types";
 import { validateConfiguration, validateSchedule, validateWorkout, workoutsUsingExercise } from "../validation";
 import { exercises, pull, run, schedule } from "../../test/fixtures";
 
@@ -63,5 +65,15 @@ describe("config parsing", () => {
     expect(json).toBe(
       `{\n  "id": "legs",\n  "name": "Legs",\n  "type": "strength",\n  "exercises": [\n    {\n      "id": "1",\n      "exerciseId": "a",\n      "target": {\n        "kind": "strength",\n        "sets": 3,\n        "reps": 5,\n        "restSeconds": 60\n      }\n    }\n  ]\n}\n`,
     );
+  });
+});
+
+describe("week order", () => {
+  it("starts on Sunday", () => {
+    expect(WEEKDAYS[0]).toBe("sunday");
+    expect(Object.keys(emptySchedule())).toEqual(WEEKDAYS);
+    expect(weekdayOf(new Date(2026, 8, 27))).toBe("sunday"); // Sun Sep 27 2026
+    expect(weekdayOf(new Date(2026, 8, 28))).toBe("monday");
+    expect(weekdayOf(new Date(2026, 9, 3))).toBe("saturday");
   });
 });

@@ -61,7 +61,7 @@ describe("management mode", () => {
     renderApp("/manage/schedule");
     await screen.findByRole("heading", { name: "Schedule" });
     const selects = screen.getAllByRole("combobox", { name: "Assign workout" });
-    await user.selectOptions(selects[2], "run"); // Wednesday
+    await user.selectOptions(selects[3], "run"); // Wednesday (week starts Sunday)
     await user.click(screen.getByRole("button", { name: /save schedule/i }));
     await waitFor(async () => expect((await getCachedConfig())?.schedule.wednesday).toEqual(["run"]));
   });

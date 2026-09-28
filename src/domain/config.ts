@@ -1,3 +1,4 @@
+import { normalizeGroups } from "./groups";
 import { emptySchedule } from "./schedule";
 import {
   EXERCISE_TYPES,
@@ -49,6 +50,7 @@ function parseTarget(raw: unknown): ExerciseTarget | undefined {
         kind: "strength",
         sets: num(raw.sets) ?? 3,
         reps: num(raw.reps) ?? 10,
+        repsMax: num(raw.repsMax),
         weightKg: num(raw.weightKg),
         restSeconds: num(raw.restSeconds) ?? 90,
       });
@@ -89,9 +91,11 @@ export function parseWorkouts(data: unknown): Workout[] {
       const exerciseId = str(item.exerciseId);
       const target = parseTarget(item.target);
       if (!exerciseId || !target) return [];
-      return [{ id: str(item.id) ?? `${id}-${i + 1}`, exerciseId, target }];
+      const group = str(item.group);
+      return [{ id: str(item.id) ?? `${id}-${i + 1}`, exerciseId, ...(group ? { group } : {}), target }];
     });
-    return [{ id, name, type, exercises }];
+    const leaveBy = str(raw.leaveBy);
+    return [{ id, name, type, ...(leaveBy && /^\d{2}:\d{2}$/.test(leaveBy) ? { leaveBy } : {}), exercises: normalizeGroups(exercises) }];
   });
 }
 
@@ -132,7 +136,14 @@ export function canonicalExercise(e: Exercise): Exercise {
 export function canonicalTarget(t: ExerciseTarget): ExerciseTarget {
   switch (t.kind) {
     case "strength":
-      return compact({ kind: t.kind, sets: t.sets, reps: t.reps, weightKg: t.weightKg || undefined, restSeconds: t.restSeconds });
+      return compact({
+        kind: t.kind,
+        sets: t.sets,
+        reps: t.reps,
+        repsMax: t.repsMax && t.repsMax > t.reps ? t.repsMax : undefined,
+        weightKg: t.weightKg || undefined,
+        restSeconds: t.restSeconds,
+      });
     case "timed":
       return { kind: t.kind, sets: t.sets, workSeconds: t.workSeconds, restSeconds: t.restSeconds };
     case "cardio":
@@ -148,12 +159,15 @@ export function canonicalTarget(t: ExerciseTarget): ExerciseTarget {
 }
 
 export function canonicalWorkout(w: Workout): Workout {
-  return {
+  return compact({
     id: w.id,
     name: w.name.trim(),
     type: w.type,
-    exercises: w.exercises.map((e) => ({ id: e.id, exerciseId: e.exerciseId, target: canonicalTarget(e.target) })),
-  };
+    leaveBy: w.leaveBy || undefined,
+    exercises: normalizeGroups(w.exercises).map((e) =>
+      compact({ id: e.id, exerciseId: e.exerciseId, group: e.group, target: canonicalTarget(e.target) }),
+    ),
+  });
 }
 
 export function canonicalSchedule(s: WeeklySchedule): WeeklySchedule {

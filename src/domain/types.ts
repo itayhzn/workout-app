@@ -15,8 +15,12 @@ export interface Exercise {
 export interface StrengthTarget {
   kind: "strength";
   sets: number;
+  /** Target reps, or the bottom of the range when repsMax is set. */
   reps: number;
+  /** Top of a rep range (e.g. 8–12). Reaching it on every set means it's time to add weight. */
+  repsMax?: number;
   weightKg?: number;
+  /** Rest after each set. In a superset, the rest after the last member ends the round. */
   restSeconds: number;
 }
 
@@ -54,6 +58,11 @@ export interface WorkoutExercise {
   /** Identifies this item inside the workout template, independent of the shared exerciseId. */
   id: string;
   exerciseId: string;
+  /**
+   * Consecutive items sharing a group id are done in rotation, one set of each per round:
+   * a superset for strength items, a circuit for timed items (rounds = sets).
+   */
+  group?: string;
   target: ExerciseTarget;
 }
 
@@ -65,26 +74,29 @@ export interface Workout {
   id: string;
   name: string;
   type: WorkoutType;
+  /** Optional "HH:MM" time you must be done by (e.g. leave the gym). Shows a countdown during the session. */
+  leaveBy?: string;
   exercises: WorkoutExercise[];
 }
 
 export type Weekday =
+  | "sunday"
   | "monday"
   | "tuesday"
   | "wednesday"
   | "thursday"
   | "friday"
-  | "saturday"
-  | "sunday";
+  | "saturday";
 
+/** Week order used everywhere (display and saved JSON). The week starts on Sunday. */
 export const WEEKDAYS: Weekday[] = [
+  "sunday",
   "monday",
   "tuesday",
   "wednesday",
   "thursday",
   "friday",
   "saturday",
-  "sunday",
 ];
 
 /** Workout IDs planned per weekday. Never contains completion state. */
@@ -129,6 +141,8 @@ interface SessionExerciseBase {
   notes?: string;
   /** True when the workout referenced an exercise that no longer exists in the library. */
   missingDefinition?: boolean;
+  /** Copied from WorkoutExercise.group (superset / circuit). */
+  group?: string;
 }
 
 export interface StrengthSessionExercise extends SessionExerciseBase {
@@ -187,6 +201,8 @@ export interface WorkoutSession {
   status: SessionStatus;
   exercises: SessionExercise[];
   notes?: string;
+  /** Absolute deadline derived from Workout.leaveBy on the day the session started. */
+  leaveByAt?: string;
 }
 
 export interface RestTimerState {

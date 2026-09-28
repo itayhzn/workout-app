@@ -1,20 +1,12 @@
 import { WEEKDAYS, type Weekday, type WeeklySchedule } from "./types";
 
 export function emptySchedule(): WeeklySchedule {
-  return {
-    monday: [],
-    tuesday: [],
-    wednesday: [],
-    thursday: [],
-    friday: [],
-    saturday: [],
-    sunday: [],
-  };
+  return Object.fromEntries(WEEKDAYS.map((d) => [d, []])) as unknown as WeeklySchedule;
 }
 
-/** JS getDay(): 0 = Sunday. */
+/** JS getDay() is 0 for Sunday, matching WEEKDAYS. */
 export function weekdayOf(date: Date): Weekday {
-  return WEEKDAYS[(date.getDay() + 6) % 7];
+  return WEEKDAYS[date.getDay()];
 }
 
 export function weekdayLabel(day: Weekday, short = false): string {

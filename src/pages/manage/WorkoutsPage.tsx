@@ -1,10 +1,12 @@
-import { ArrowDown, ArrowUp, ChevronLeft, Copy, GripVertical, ListChecks, Plus, Save, Search, Trash2, TriangleAlert } from "lucide-react";
-import { useMemo, useState, type DragEvent, type ReactNode } from "react";
+import { ArrowDown, ArrowUp, ChevronLeft, Copy, GripVertical, Link2, ListChecks, Plus, Save, Search, Trash2, TriangleAlert, Unlink2 } from "lucide-react";
+import { Fragment, useMemo, useState, type DragEvent, type ReactNode } from "react";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { ExerciseImage } from "../../components/ExerciseImage";
+import { GroupLabel } from "../../components/GroupLabel";
 import { Banner, ConfirmDialog, EmptyState, Field, Label, Modal, TypeBadge } from "../../components/ui";
 import { canonicalWorkout, defaultTarget, defaultTargetKind } from "../../domain/config";
 import { estimateWorkoutMinutes, totalSets } from "../../domain/format";
+import { linkWithNext, normalizeGroups, unlinkFromNext } from "../../domain/groups";
 import { newId } from "../../domain/ids";
 import { daysForWorkout, weekdayLabel } from "../../domain/schedule";
 import {
@@ -133,10 +135,17 @@ function WorkoutEditor({ workout, initial }: { workout?: Workout; initial?: Work
   const dirty = JSON.stringify(draft) !== JSON.stringify(original);
   const days = isNew ? [] : daysForWorkout(config.schedule, draft.id);
 
+  // Grouping is re-normalized after every edit so supersets/circuits stay contiguous after moves and removals.
   const setItems = (exercises: WorkoutExercise[]) => {
-    setDraft({ ...draft, exercises });
+    setDraft({ ...draft, exercises: normalizeGroups(exercises) });
     setSaved(false);
   };
+  const setRounds = (group: string, rounds: number) =>
+    setItems(
+      draft.exercises.map((e) =>
+        e.group === group && (e.target.kind === "strength" || e.target.kind === "timed") ? { ...e, target: { ...e.target, sets: rounds } } : e,
+      ),
+    );
   const move = (from: number, to: number) => {
     if (to < 0 || to >= draft.exercises.length || from === to) return;
     const next = [...draft.exercises];
@@ -240,7 +249,7 @@ function WorkoutEditor({ workout, initial }: { workout?: Workout; initial?: Work
         </div>
         {message && <Banner tone="error">{message}</Banner>}
         {saved && !dirty && <Banner tone="info">Saved.</Banner>}
-        <div className="grid gap-4 md:grid-cols-[1fr_200px]">
+        <div className="grid gap-4 md:grid-cols-[1fr_180px_150px]">
           <Field label="Workout name" error={errorFor(errors, "name")}>
             {(id) => (
               <input
@@ -267,6 +276,17 @@ function WorkoutEditor({ workout, initial }: { workout?: Workout; initial?: Work
               </select>
             )}
           </Field>
+          <Field label="Leave by" error={errorFor(errors, "leaveBy")} hint="Optional countdown">
+            {(id) => (
+              <input
+                id={id}
+                type="time"
+                className={`input h-12 tnum ${errorFor(errors, "leaveBy") ? "input-error" : ""}`}
+                value={draft.leaveBy ?? ""}
+                onChange={(e) => setDraft({ ...draft, leaveBy: e.target.value || undefined })}
+              />
+            )}
+          </Field>
         </div>
         <div className="flex items-center justify-between">
           <p className="text-xs text-ink-3">{days.length ? `Scheduled on ${days.map((d) => weekdayLabel(d)).join(", ")}.` : "Not on the weekly schedule."}</p>
@@ -280,33 +300,69 @@ function WorkoutEditor({ workout, initial }: { workout?: Workout; initial?: Work
           <Label>{draft.exercises.length} exercises</Label>
         </div>
         {draft.exercises.length === 0 && <p className="px-1 pb-3 text-sm text-ink-3">No exercises yet. Add some from your library.</p>}
-        <ol className="flex flex-col gap-2">
-          {draft.exercises.map((item, i) => (
-            <li
-              key={item.id}
-              draggable={armed === i}
-              onDragStart={onDragStart(i)}
-              onDragOver={onDragOver(i)}
-              onDrop={onDrop(i)}
-              onDragEnd={() => {
-                setDragIndex(null);
-                setDropIndex(null);
-                setArmed(null);
-              }}
-              className={`rounded-lg border bg-elevated/60 transition ${dropIndex === i && dragIndex !== i ? "border-volt" : "border-line"} ${dragIndex === i ? "opacity-40" : ""}`}
-            >
-              <WorkoutExerciseRow
-                item={item}
-                index={i}
-                count={draft.exercises.length}
-                errors={errors}
-                onArm={(on) => setArmed(on ? i : null)}
-                onMove={(to) => move(i, to)}
-                onRemove={() => setItems(draft.exercises.filter((_, j) => j !== i))}
-                onTarget={(t) => updateTarget(i, t)}
-              />
-            </li>
-          ))}
+        <ol className="flex flex-col">
+          {draft.exercises.map((item, i) => {
+            const prev = draft.exercises[i - 1];
+            const next = draft.exercises[i + 1];
+            const firstOfGroup = !!item.group && prev?.group !== item.group;
+            const inGroup = !!item.group;
+            const linkedToNext = inGroup && next?.group === item.group;
+            const groupable = (k: string) => k === "strength" || k === "timed";
+            const canLink = !!next && groupable(item.target.kind) && item.target.kind === next.target.kind;
+            const rounds = inGroup ? Math.max(...draft.exercises.filter((e) => e.group === item.group).map((e) => ("sets" in e.target ? e.target.sets : 1))) : 0;
+            return (
+              <Fragment key={item.id}>
+                <li
+                  draggable={armed === i}
+                  onDragStart={onDragStart(i)}
+                  onDragOver={onDragOver(i)}
+                  onDrop={onDrop(i)}
+                  onDragEnd={() => {
+                    setDragIndex(null);
+                    setDropIndex(null);
+                    setArmed(null);
+                  }}
+                  className={`rounded-lg border bg-elevated/60 transition ${dropIndex === i && dragIndex !== i ? "border-volt" : "border-line"} ${dragIndex === i ? "opacity-40" : ""} ${
+                    inGroup ? "border-l-4 border-l-volt/70" : ""
+                  }`}
+                >
+                  {firstOfGroup && (
+                    <div className="flex items-center gap-3 border-b border-line px-3 py-2">
+                      <GroupLabel kind={item.target.kind} />
+                      <label className="ml-auto flex items-center gap-2 text-xs text-ink-2">
+                        Rounds
+                        <NumInput label="Rounds" value={rounds} step={1} onChange={(v) => v && v > 0 && setRounds(item.group!, Math.round(v))} className="w-14" />
+                      </label>
+                    </div>
+                  )}
+                  <WorkoutExerciseRow
+                    item={item}
+                    index={i}
+                    count={draft.exercises.length}
+                    errors={errors}
+                    onArm={(on) => setArmed(on ? i : null)}
+                    onMove={(to) => move(i, to)}
+                    onRemove={() => setItems(draft.exercises.filter((_, j) => j !== i))}
+                    onTarget={(t) => updateTarget(i, t)}
+                  />
+                </li>
+                {next && (
+                  <li className={`flex justify-center ${linkedToNext ? "h-6" : "h-5"}`} aria-hidden={!canLink && !linkedToNext}>
+                    {(canLink || linkedToNext) && (
+                      <button
+                        className={`flex items-center gap-1 rounded px-2 text-[11px] font-semibold uppercase tracking-wider ${linkedToNext ? "text-volt hover:text-ink" : "text-ink-3 hover:text-volt"}`}
+                        onClick={() => setItems(linkedToNext ? unlinkFromNext(draft.exercises, i) : linkWithNext(draft.exercises, i))}
+                        title={linkedToNext ? "Split here" : item.target.kind === "timed" ? "Join into a circuit" : "Join into a superset"}
+                      >
+                        {linkedToNext ? <Unlink2 size={12} /> : <Link2 size={12} />}
+                        {linkedToNext ? "Unlink" : item.target.kind === "timed" ? "Circuit" : "Superset"}
+                      </button>
+                    )}
+                  </li>
+                )}
+              </Fragment>
+            );
+          })}
         </ol>
         <button className="btn-secondary mt-3 h-12 w-full border-dashed" onClick={() => setPickerOpen(true)}>
           <Plus size={18} /> Add exercise
@@ -411,7 +467,11 @@ function WorkoutExerciseRow({ item, index, count, errors, onArm, onMove, onRemov
               <NumInput label="Sets" value={t.sets} step={1} onChange={(v) => set({ sets: v ?? 0 })} error={err("sets")} className="w-14" />
             </TargetField>
             <TargetField label="Reps">
-              <NumInput label="Reps" value={t.reps} step={1} onChange={(v) => set({ reps: v ?? 0 })} error={err("reps")} className="w-14" />
+              <div className="flex items-center gap-1">
+                <NumInput label="Reps (min)" value={t.reps} step={1} onChange={(v) => set({ reps: v ?? 0 })} error={err("reps")} className="w-12" />
+                <span className="text-ink-3">–</span>
+                <NumInput label="Reps (max, optional)" value={t.repsMax} step={1} placeholder="—" onChange={(v) => set({ repsMax: v })} error={err("repsMax")} className="w-12" />
+              </div>
             </TargetField>
             <TargetField label={unit}>
               <NumInput

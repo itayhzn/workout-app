@@ -6,6 +6,7 @@ import {
   setSessionNotes,
   type CompleteSetResult,
 } from "../domain/session";
+import { supersetNext } from "../domain/groups";
 import {
   applyIntervalProgress,
   buildIntervalPlan,
@@ -62,7 +63,8 @@ interface ActiveWorkoutValue {
   start: (workout: Workout, exercises: Exercise[]) => Promise<WorkoutSession>;
   /** Applies a pure session update and persists it immediately. */
   update: (fn: (s: WorkoutSession) => WorkoutSession) => void;
-  completeSet: (exerciseId: string, values: { weightKg?: number; reps?: number }) => CompleteSetResult | undefined;
+  /** `nextExerciseId` is set inside a superset: the member to move to next. */
+  completeSet: (exerciseId: string, values: { weightKg?: number; reps?: number }) => (CompleteSetResult & { nextExerciseId?: string }) | undefined;
   startRest: (exerciseId: string, setNumber: number, seconds: number) => void;
   adjustRest: (deltaSeconds: number) => void;
   clearRest: () => void;
@@ -185,11 +187,13 @@ export function ActiveWorkoutProvider({ children }: { children: ReactNode }) {
       const result = completeNextSet(cur, exerciseId, values);
       applySession(result.session);
       const ex = result.session.exercises.find((e) => e.id === exerciseId);
+      // Supersets: go straight to the next member within a round; rest only when the round ends.
+      const step = supersetNext(result.session, exerciseId);
       // Rest after every set except when nothing is left in the workout.
       const workLeft = result.session.exercises.some((e) => e.status === "pending" || e.status === "in_progress");
-      if (ex?.kind === "strength" && workLeft) startRest(exerciseId, result.completedSet.setNumber, ex.prescribed.restSeconds);
+      if (ex?.kind === "strength" && workLeft && step.rest) startRest(exerciseId, result.completedSet.setNumber, ex.prescribed.restSeconds);
       else applyTimer(undefined);
-      return result;
+      return { ...result, nextExerciseId: step.nextExerciseId };
     },
     [applySession, applyTimer, startRest],
   );

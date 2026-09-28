@@ -1,13 +1,17 @@
-import { ArrowRight, Check, ChevronDown, CircleCheck, History, Lightbulb, Pause, Play, StickyNote, Timer, Undo2, X } from "lucide-react";
+import { ArrowRight, Check, ChevronDown, CircleCheck, History, Lightbulb, Pause, Play, StickyNote, Timer, TrendingUp, Undo2, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { ExerciseImage } from "../../components/ExerciseImage";
+import { GroupLabel } from "../../components/GroupLabel";
+import { LeaveByChip } from "../../components/LeaveByChip";
 import { NumberStepper } from "../../components/NumberStepper";
 import { Banner, EmptyState, Label, TypeBadge } from "../../components/ui";
+import { WeightStepper } from "../../components/WeightStepper";
 import {
   formatClock,
   formatNumber,
   formatPace,
+  formatReps,
   formatRest,
   formatSeconds,
   formatShortDate,
@@ -30,24 +34,25 @@ import {
   updateSet,
   type PreviousPerformance,
 } from "../../domain/session";
-import type {
-  CardioSessionExercise,
-  SessionExercise,
-  StrengthSessionExercise,
-  StrengthSetResult,
-  SwimmingSessionExercise,
-  TimedSessionExercise,
-  TimedSetResult,
-  WorkoutSession,
+import {
+  isSetBased,
+  type CardioSessionExercise,
+  type SessionExercise,
+  type StrengthSessionExercise,
+  type StrengthSetResult,
+  type SwimmingSessionExercise,
+  type TimedSessionExercise,
+  type TimedSetResult,
+  type WorkoutSession,
 } from "../../domain/types";
-import { WeightStepper } from "../../components/WeightStepper";
-import { useWeightUnit } from "../../state/units";
+import { groupMembers } from "../../domain/groups";
 import { timedBlockSize } from "../../domain/intervals";
 import { useNow } from "../../hooks/useNow";
 import { primeAudio } from "../../services/feedback";
 import { useActiveWorkout } from "../../state/ActiveWorkoutContext";
 import { useConfig } from "../../state/ConfigContext";
 import { useSessions } from "../../state/history";
+import { useWeightUnit } from "../../state/units";
 import { PhoneHeader, PhoneScreen } from "./PhoneLayout";
 import { TimerDock } from "./TimerDock";
 import { SessionGuard } from "./SessionGuard";
@@ -224,6 +229,7 @@ type TargetField = "weightKg" | "reps" | "sets" | "restSeconds";
 
 function StrengthExercise({ session, ex, previous }: { session: WorkoutSession; ex: StrengthSessionExercise; previous?: PreviousPerformance }) {
   const { update, completeSet, clearRest } = useActiveWorkout();
+  const navigate = useNavigate();
   const unit = useWeightUnit();
   const [editingTarget, setEditingTarget] = useState<TargetField | null>(null);
   const [editingSet, setEditingSet] = useState<number | null>(null);
@@ -235,7 +241,11 @@ function StrengthExercise({ session, ex, previous }: { session: WorkoutSession; 
     if (!current) return;
     primeAudio();
     setEditingSet(null);
-    completeSet(ex.id, { weightKg: current.weightKg, reps: current.reps });
+    const result = completeSet(ex.id, { weightKg: current.weightKg, reps: current.reps });
+    // Superset: jump straight to the next member (resting first only at the end of a round).
+    if (result?.nextExerciseId && result.nextExerciseId !== ex.id) {
+      navigate(`/workout/${session.id}/exercise/${result.nextExerciseId}`, { replace: true });
+    }
   };
 
   const undoLast = () => {
@@ -267,13 +277,23 @@ function StrengthExercise({ session, ex, previous }: { session: WorkoutSession; 
         </>
       }
     >
-      <PhoneHeader title="Exercise" back={`/workout/${session.id}`} />
+      <PhoneHeader title="Exercise" back={`/workout/${session.id}`} right={<LeaveByChip session={session} className="mr-1" />} />
       {ex.missingDefinition && <Banner>This exercise no longer exists in the library. You can still log or skip it.</Banner>}
       <ExerciseHero ex={ex} />
+      <GroupStrip session={session} ex={ex} />
 
       <section className="card p-4">
         <Label className="mb-3">Today's target</Label>
-        {editingTarget ? (
+        {editingTarget === "reps" ? (
+          <RepsEditor
+            ex={ex}
+            onCancel={() => setEditingTarget(null)}
+            onSave={(reps, repsMax) => {
+              update((s) => updatePrescription(s, ex.id, { reps, repsMax }));
+              setEditingTarget(null);
+            }}
+          />
+        ) : editingTarget ? (
           <TargetEditor
             field={editingTarget}
             ex={ex}
@@ -286,7 +306,7 @@ function StrengthExercise({ session, ex, previous }: { session: WorkoutSession; 
         ) : (
           <div className="grid grid-cols-4 gap-2">
             <TargetTile label="Weight" value={formatWeightValue(ex.prescribed.weightKg, unit)} unit={ex.prescribed.weightKg ? unit : ""} onClick={() => setEditingTarget("weightKg")} />
-            <TargetTile label="Reps" value={String(ex.prescribed.reps)} onClick={() => setEditingTarget("reps")} />
+            <TargetTile label="Reps" value={formatReps(ex.prescribed)} onClick={() => setEditingTarget("reps")} />
             <TargetTile label="Sets" value={String(ex.sets.length)} onClick={() => setEditingTarget("sets")} />
             <TargetTile label="Rest" value={formatRest(ex.prescribed.restSeconds)} onClick={() => setEditingTarget("restSeconds")} />
           </div>
@@ -306,6 +326,11 @@ function StrengthExercise({ session, ex, previous }: { session: WorkoutSession; 
                 {prevEx.sets.filter((s) => s.status === "completed").map((s) => s.reps ?? "–").join(" / ")}
               </span>
             </div>
+            {readyToProgress(prevEx, ex) && (
+              <div className="mt-1 flex items-center gap-1 text-sm font-semibold text-emerald">
+                <TrendingUp size={14} /> Top of the range on every set — try +{unit === "kg" ? "2.5 kg" : "5 lbs"}
+              </div>
+            )}
           </div>
         </section>
       )}
@@ -343,6 +368,76 @@ function StrengthExercise({ session, ex, previous }: { session: WorkoutSession; 
       <Tips exerciseId={ex.exerciseId} />
       <ExerciseNote ex={ex} />
     </PhoneScreen>
+  );
+}
+
+/** Every completed set last time reached the top of today's rep range. */
+function readyToProgress(prev: StrengthSessionExercise, ex: StrengthSessionExercise): boolean {
+  const top = ex.prescribed.repsMax;
+  const done = prev.sets.filter((s) => s.status === "completed");
+  return !!top && done.length >= ex.prescribed.sets && done.every((s) => (s.reps ?? 0) >= top);
+}
+
+function RepsEditor({ ex, onSave, onCancel }: { ex: StrengthSessionExercise; onSave: (reps: number, repsMax: number | undefined) => void; onCancel: () => void }) {
+  const [min, setMin] = useState<number | undefined>(ex.prescribed.reps);
+  const [max, setMax] = useState<number | undefined>(ex.prescribed.repsMax);
+  const valid = min !== undefined && min > 0 && (max === undefined || max >= min);
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <Label className="mb-1 text-cyan">Reps (min)</Label>
+          <NumberStepper label="Minimum reps" value={min} onChange={setMin} min={1} />
+        </div>
+        <div>
+          <Label className="mb-1 text-cyan">Up to (optional)</Label>
+          <NumberStepper label="Maximum reps" value={max} onChange={setMax} min={0} optional />
+        </div>
+      </div>
+      <p className="text-xs text-ink-3">Applies to upcoming sets. Hit the top of the range on every set → add weight next time.</p>
+      <div className="grid grid-cols-2 gap-2">
+        <button className="btn-ghost h-12" onClick={onCancel}>
+          Cancel
+        </button>
+        <button className="btn-primary h-12" onClick={() => valid && onSave(min!, max && max > min! ? max : undefined)} disabled={!valid}>
+          Save
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/** Superset/circuit members with their progress; tap to switch. */
+function GroupStrip({ session, ex }: { session: WorkoutSession; ex: SessionExercise }) {
+  if (!ex.group) return null;
+  const members = groupMembers(session, ex.id);
+  if (members.length < 2) return null;
+  const rounds = Math.max(...members.map((m) => (isSetBased(m) ? m.sets.length : 1)));
+  return (
+    <section className="card border-volt/40 p-3">
+      <GroupLabel kind={ex.kind} rounds={rounds} />
+      <div className="mt-2 flex flex-wrap gap-2">
+        {members.map((m) => {
+          const done = isSetBased(m) ? m.sets.filter((x) => x.status === "completed").length : 0;
+          const total = isSetBased(m) ? m.sets.length : 1;
+          return (
+            <Link
+              key={m.id}
+              to={`/workout/${session.id}/exercise/${m.id}`}
+              replace
+              aria-current={m.id === ex.id ? "true" : undefined}
+              className={`chip ${m.id === ex.id ? "chip-active" : ""} ${done === total ? "opacity-60" : ""}`}
+            >
+              {m.exerciseName}
+              <span className="tnum text-xs text-ink-2">
+                {done}/{total}
+              </span>
+            </Link>
+          );
+        })}
+      </div>
+      {ex.kind === "strength" && <p className="mt-2 text-xs text-ink-3">After each set you move straight to the next exercise; rest comes at the end of the round.</p>}
+    </section>
   );
 }
 
@@ -543,9 +638,10 @@ function TimedExercise({ session, ex, previous }: { session: WorkoutSession; ex:
         </>
       }
     >
-      <PhoneHeader title="Timed exercise" back={`/workout/${session.id}`} />
+      <PhoneHeader title="Timed exercise" back={`/workout/${session.id}`} right={<LeaveByChip session={session} className="mr-1" />} />
       {ex.missingDefinition && <Banner>This exercise no longer exists in the library. You can still log or skip it.</Banner>}
       <ExerciseHero ex={ex} />
+      <GroupStrip session={session} ex={ex} />
 
       <section className="card p-4">
         <Label className="mb-3">Today's target</Label>
@@ -589,7 +685,7 @@ function TimedExercise({ session, ex, previous }: { session: WorkoutSession; ex:
 
       <section>
         <div className="flex justify-between px-3 pb-2">
-          <Label>Sets</Label>
+          <Label>{ex.group ? "Rounds" : "Sets"}</Label>
           <Label>
             {doneCount}/{ex.sets.length}
           </Label>
@@ -728,7 +824,7 @@ function ActivityExercise({ session, ex, previous }: { session: WorkoutSession; 
         </>
       }
     >
-      <PhoneHeader title="Activity" back={`/workout/${session.id}`} />
+      <PhoneHeader title="Activity" back={`/workout/${session.id}`} right={<LeaveByChip session={session} className="mr-1" />} />
       {ex.missingDefinition && <Banner>This exercise no longer exists in the library. You can still log or skip it.</Banner>}
       <ExerciseHero ex={ex} />
 

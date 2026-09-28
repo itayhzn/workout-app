@@ -103,6 +103,7 @@ export function SessionExerciseResult({ ex, index }: { ex: SessionExercise; inde
             <div className={`font-semibold ${skipped ? "text-ink-2" : ""}`}>
               <span className="mr-2 font-display text-xs text-ink-3 tnum">{String(index + 1).padStart(2, "0")}</span>
               {ex.exerciseName}
+              {ex.group && <span className="ml-2 align-middle font-display text-[10px] font-bold uppercase tracking-widest text-volt">{ex.kind === "timed" ? "Circuit" : "Superset"}</span>}
             </div>
             <div className={`shrink-0 font-display text-sm font-bold tnum ${skipped ? "text-ink-3" : "text-emerald"}`}>{exerciseResultLine(ex)}</div>
           </div>

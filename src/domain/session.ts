@@ -1,3 +1,4 @@
+import { groupTurn } from "./groups";
 import { newId } from "./ids";
 import {
   isSetBased,
@@ -31,6 +32,7 @@ export function createSession(
     workoutName: workout.name,
     workoutType: workout.type,
     startedAt: now.toISOString(),
+    ...leaveByFor(workout.leaveBy, now),
     status: "active",
     exercises: workout.exercises.map((item): SessionExercise => {
       const def = byId.get(item.exerciseId);
@@ -40,6 +42,7 @@ export function createSession(
         exerciseName: def?.name ?? `Unknown exercise (${item.exerciseId})`,
         status: "pending" as const,
         ...(def ? {} : { missingDefinition: true }),
+        ...(item.group ? { group: item.group } : {}),
       };
       // Deep-copy the target so the session never aliases the mutable template.
       const target = structuredClone(item.target);
@@ -55,6 +58,15 @@ export function createSession(
       }
     }),
   };
+}
+
+/** Deadline on the session's own day. No deadline if that time has already passed when starting. */
+function leaveByFor(leaveBy: string | undefined, now: Date): { leaveByAt?: string } {
+  const m = leaveBy?.match(/^(\d{2}):(\d{2})$/);
+  if (!m) return {};
+  const at = new Date(now);
+  at.setHours(Number(m[1]), Number(m[2]), 0, 0);
+  return at > now ? { leaveByAt: at.toISOString() } : {};
 }
 
 export function initialSets(target: StrengthTarget): StrengthSetResult[] {
@@ -448,10 +460,11 @@ function completeActivityValue<T extends CardioSessionExercise | SwimmingSession
 
 /** The exercise the user should do next: first in-progress, otherwise first pending. */
 export function currentExercise(session: WorkoutSession): SessionExercise | undefined {
-  return (
+  const next =
     session.exercises.find((e) => e.status === "in_progress") ??
-    session.exercises.find((e) => e.status === "pending")
-  );
+    session.exercises.find((e) => e.status === "pending");
+  // Inside a superset/circuit, it's whichever member's turn it is in the rotation.
+  return next?.group ? (groupTurn(session, next.id) ?? next) : next;
 }
 
 export interface SessionStats {
