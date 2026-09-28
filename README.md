@@ -19,7 +19,14 @@ Weights can be shown and entered in **kg or lbs** (phone ⚙ or desktop Settings
 
 ### Training plan
 
-`public/data/` ships a weekly plan: Push (Sun), Run 5K + Abs circuit (Mon), Swim 30 (Tue), Legs (Wed), Pull (Thu), Long Run 10K (Fri), Walk 30 (Sat), plus an 8-minute Daily Mobility interval flow every day. Weights marked in the plan are starting points to adjust in the app.
+`public/data/` ships a two-a-day plan (details in `context/workout-plan.md`):
+- **Sun–Fri mornings:** push/pull/legs twice (A and B versions) with supersets, plus 30 min of cardio (run, run + rope, swims, stair climber), with a 7:25 leave-by countdown.
+- **Sun–Fri floor sessions:** mobility plus a core circuit or flexibility.
+- **Saturday:** a stretch and a 45-minute family walk.
+
+### Supersets, circuits and rep ranges
+
+Link consecutive exercises in the desktop editor to make a **superset** (strength: A → B, then rest) or a **circuit** (timed: stations run round-robin for N rounds). Strength targets can use a rep range such as 8–12; the app suggests adding weight once you reach the top of the range on every set.
 
 Phones and narrow screens open in workout mode, desktops in management mode. You can switch in Settings (phone: ⚙ on the home screen, desktop: Settings page).
 

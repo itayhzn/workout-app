@@ -1,5 +1,6 @@
 import { completeTimedSet } from "./session";
-import type { IntervalStep, IntervalTimerState, WorkoutSession } from "./types";
+import { groupRuns } from "./groups";
+import type { IntervalStep, IntervalTimerState, TimedSessionExercise, TimedSetResult, WorkoutSession } from "./types";
 
 // Pure interval-timer logic. The position is always derived from the clock (never a ticking counter),
 // so the sequence stays correct through throttled tabs, screen lock and reloads.
@@ -12,16 +13,30 @@ export const PREP_SECONDS = 5;
  * Each work set is followed by that exercise's rest, except the very last one.
  */
 export function buildIntervalPlan(session: WorkoutSession, startExerciseId: string, prepSeconds = PREP_SECONDS): IntervalStep[] {
-  const start = session.exercises.findIndex((e) => e.id === startExerciseId);
+  let start = session.exercises.findIndex((e) => e.id === startExerciseId);
   if (start === -1) return [];
-  const work: IntervalStep[] = [];
-  const restAfter: number[] = [];
+  // Starting inside a circuit starts the whole circuit.
+  const group = session.exercises[start].group;
+  while (group && start > 0 && session.exercises[start - 1].group === group) start--;
+  const block: TimedSessionExercise[] = [];
   for (const ex of session.exercises.slice(start)) {
     if (ex.kind !== "timed") break;
-    for (const set of ex.sets) {
-      if (set.status !== "pending") continue;
-      work.push({ exerciseId: ex.id, setNumber: set.setNumber, phase: "work", durationSeconds: ex.prescribed.workSeconds });
-      restAfter.push(ex.prescribed.restSeconds);
+    block.push(ex);
+  }
+  const work: IntervalStep[] = [];
+  const restAfter: number[] = [];
+  const add = (ex: TimedSessionExercise, set: TimedSetResult) => {
+    if (set.status !== "pending") return;
+    work.push({ exerciseId: ex.id, setNumber: set.setNumber, phase: "work", durationSeconds: ex.prescribed.workSeconds });
+    restAfter.push(ex.prescribed.restSeconds);
+  };
+  for (const run of groupRuns(block)) {
+    if (run.length > 1) {
+      // Circuit: one set of each station per round.
+      const rounds = Math.max(...run.map((ex) => ex.sets.length));
+      for (let r = 0; r < rounds; r++) for (const ex of run) if (ex.sets[r]) add(ex, ex.sets[r]);
+    } else {
+      for (const set of run[0].sets) add(run[0], set);
     }
   }
   if (!work.length) return [];

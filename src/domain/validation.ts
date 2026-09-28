@@ -1,3 +1,4 @@
+import { groupRuns } from "./groups";
 import {
   EXERCISE_TYPES,
   WEEKDAYS,
@@ -42,6 +43,8 @@ export function validateTarget(t: ExerciseTarget, prefix = "target"): Validation
     case "strength":
       if (!isPositiveInt(t.sets)) errors.push({ path: `${prefix}.sets`, message: "Sets must be greater than 0" });
       if (!isPositiveInt(t.reps)) errors.push({ path: `${prefix}.reps`, message: "Reps must be greater than 0" });
+      if (t.repsMax !== undefined && (!isPositiveInt(t.repsMax) || t.repsMax < t.reps))
+        errors.push({ path: `${prefix}.repsMax`, message: "Top of the rep range must be at least the bottom" });
       if (!isNonNegative(t.restSeconds))
         errors.push({ path: `${prefix}.restSeconds`, message: "Rest must be 0 or more seconds" });
       if (t.weightKg !== undefined && !isNonNegative(t.weightKg))
@@ -80,6 +83,16 @@ export function validateWorkout(w: Workout, exercises: Exercise[]): ValidationRe
   if (!w.id?.trim()) errors.push({ path: "id", message: "ID is required" });
   if (!w.name?.trim()) errors.push({ path: "name", message: "Name is required" });
   if (!WORKOUT_TYPES.includes(w.type)) errors.push({ path: "type", message: "Type is required" });
+  if (w.leaveBy !== undefined && w.leaveBy !== "" && !/^([01]\d|2[0-3]):[0-5]\d$/.test(w.leaveBy))
+    errors.push({ path: "leaveBy", message: "Use a 24-hour time like 07:25" });
+  for (const run of groupRuns(w.exercises)) {
+    if (!run[0].group) continue;
+    const kind = run[0].target.kind;
+    if (kind !== "strength" && kind !== "timed")
+      errors.push({ path: `exercises.${w.exercises.indexOf(run[0])}.group`, message: "Only sets × reps or timed exercises can be grouped" });
+    else if (run.some((item) => item.target.kind !== kind))
+      errors.push({ path: `exercises.${w.exercises.indexOf(run[0])}.group`, message: "A superset or circuit can't mix sets × reps with timed exercises" });
+  }
   const itemIds = new Set<string>();
   w.exercises.forEach((item, i) => {
     if (!known.has(item.exerciseId))

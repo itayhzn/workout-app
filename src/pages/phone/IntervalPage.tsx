@@ -106,7 +106,7 @@ function IntervalRunner({ session, timer }: { session: WorkoutSession; timer: In
   const labelOf = (id: string, setNumber: number) => {
     const e = session.exercises.find((x) => x.id === id);
     const sets = e?.kind === "timed" ? e.sets.length : 1;
-    return `${e?.exerciseName ?? "Exercise"}${sets > 1 ? ` · set ${setNumber}` : ""}`;
+    return `${e?.exerciseName ?? "Exercise"}${sets > 1 ? ` · ${e?.group ? "round" : "set"} ${setNumber}` : ""}`;
   };
 
   return (
@@ -172,7 +172,7 @@ function IntervalRunner({ session, timer }: { session: WorkoutSession; timer: In
             <div className="font-display text-2xl font-bold leading-tight">{ex?.exerciseName ?? "Exercise"}</div>
             {setCount > 1 && (
               <div className="text-sm text-ink-2">
-                Set {step.setNumber} of {setCount}
+                {ex?.group ? "Round" : "Set"} {step.setNumber} of {setCount}
               </div>
             )}
           </div>

@@ -1,4 +1,5 @@
-import type { ExerciseTarget, StrengthTarget, TimedTarget, Workout, WorkoutSession } from "./types";
+import { groupRuns } from "./groups";
+import type { ExerciseTarget, StrengthTarget, TimedTarget, Workout, WorkoutExercise, WorkoutSession } from "./types";
 import { toDisplayWeight, type WeightUnit } from "./units";
 
 export function formatClock(totalSeconds: number): string {
@@ -38,9 +39,14 @@ export function formatWeight(kg: number | undefined, unit: WeightUnit = "kg"): s
   return kg === undefined || kg === 0 ? "BW" : `${formatWeightValue(kg, unit)} ${unit}`;
 }
 
+/** "10" or "8–12". */
+export function formatReps(t: Pick<StrengthTarget, "reps" | "repsMax">): string {
+  return t.repsMax && t.repsMax > t.reps ? `${t.reps}–${t.repsMax}` : String(t.reps);
+}
+
 export function formatStrengthTarget(t: StrengthTarget, unit: WeightUnit = "kg"): string {
   const weight = t.weightKg ? ` · ${formatWeight(t.weightKg, unit)}` : "";
-  return `${t.sets} × ${t.reps}${weight}`;
+  return `${t.sets} × ${formatReps(t)}${weight}`;
 }
 
 /** 30 -> "30s", 90 -> "1:30". */
@@ -92,8 +98,24 @@ export function estimateTargetSeconds(t: ExerciseTarget): number {
   }
 }
 
+/** Estimated seconds for a list of workout items, accounting for supersets and circuits. */
+export function estimateItemsSeconds(items: WorkoutExercise[]): number {
+  return groupRuns(items).reduce((sum, run) => {
+    if (run.length < 2) return sum + estimateTargetSeconds(run[0].target);
+    const rounds = Math.max(...run.map((i) => ("sets" in i.target ? i.target.sets : 1)));
+    const last = run[run.length - 1].target;
+    const rest = "restSeconds" in last ? last.restSeconds : 0;
+    if (run[0].target.kind === "timed") {
+      // Circuit: every station's work + its rest, each round.
+      return sum + run.reduce((s, i) => s + (i.target.kind === "timed" ? i.target.sets * (i.target.workSeconds + i.target.restSeconds) : 0), 0);
+    }
+    // Superset: back-to-back sets with a single rest per round, plus setup per station.
+    return sum + rounds * (run.length * 45 + rest) + run.length * 60;
+  }, 0);
+}
+
 export function estimateWorkoutMinutes(w: Workout): number {
-  const minutes = w.exercises.reduce((sum, e) => sum + estimateTargetSeconds(e.target), 0) / 60;
+  const minutes = estimateItemsSeconds(w.exercises) / 60;
   // Short sessions (mobility, abs) get minute precision; longer ones round to 5.
   if (minutes < 20) return Math.max(1, Math.round(minutes));
   return Math.round(minutes / 5) * 5;

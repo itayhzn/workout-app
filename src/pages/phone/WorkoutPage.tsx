@@ -4,6 +4,9 @@ import { Link, useNavigate } from "react-router-dom";
 import { ExerciseImage } from "../../components/ExerciseImage";
 import { Banner, ConfirmDialog, Label, Modal, ProgressBar } from "../../components/ui";
 import { formatClock, formatNumber, formatSeconds, formatTarget, formatWeight, formatWeightValue } from "../../domain/format";
+import { GroupLabel } from "../../components/GroupLabel";
+import { LeaveByChip } from "../../components/LeaveByChip";
+import { groupRuns } from "../../domain/groups";
 import { timedBlockSize } from "../../domain/intervals";
 import { currentExercise, sessionStats } from "../../domain/session";
 import { isSetBased, type SessionExercise, type WorkoutSession } from "../../domain/types";
@@ -48,7 +51,7 @@ function WorkoutOverview({ session }: { session: WorkoutSession }) {
         </>
       }
     >
-      <PhoneHeader title="Active workout" back="/" />
+      <PhoneHeader title="Active workout" back="/" right={<LeaveByChip session={session} className="mr-1" />} />
       {storageError && <Banner tone="error">Progress may not be saved: {storageError}</Banner>}
 
       <div className="flex items-center justify-between gap-3">
@@ -72,11 +75,22 @@ function WorkoutOverview({ session }: { session: WorkoutSession }) {
       </div>
 
       <ul className="flex flex-col gap-3">
-        {session.exercises.map((ex) => (
-          <li key={ex.id}>
-            {ex.id === current?.id ? <CurrentExerciseCard session={session} ex={ex} /> : <ExerciseTile session={session} ex={ex} />}
-          </li>
-        ))}
+        {groupRuns(session.exercises).map((run) => {
+          const item = (ex: SessionExercise) =>
+            ex.id === current?.id ? <CurrentExerciseCard session={session} ex={ex} /> : <ExerciseTile session={session} ex={ex} />;
+          if (run.length < 2) return <li key={run[0].id}>{item(run[0])}</li>;
+          const rounds = Math.max(...run.map((e) => (isSetBased(e) ? e.sets.length : 1)));
+          return (
+            <li key={run[0].id} className="rounded-xl border border-dashed border-volt/40 p-2">
+              <GroupLabel kind={run[0].kind} rounds={rounds} className="mb-2 ml-1" />
+              <ul className="flex flex-col gap-2">
+                {run.map((ex) => (
+                  <li key={ex.id}>{item(ex)}</li>
+                ))}
+              </ul>
+            </li>
+          );
+        })}
       </ul>
 
       <Modal open={menuOpen} onClose={() => setMenuOpen(false)} title="Workout actions">

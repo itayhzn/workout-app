@@ -1,5 +1,67 @@
 [
   {
+    "id": "arm-circles",
+    "name": "Arm Circles",
+    "type": "mobility",
+    "tips": [
+      "Small to big circles, forward then backward"
+    ]
+  },
+  {
+    "id": "cat-cow",
+    "name": "Cat-Cow",
+    "type": "mobility",
+    "tips": [
+      "Move slowly with your breath",
+      "Round and arch through the whole spine"
+    ]
+  },
+  {
+    "id": "hip-circles",
+    "name": "Hip Circles",
+    "type": "mobility",
+    "tips": [
+      "Hands on hips, big slow circles",
+      "Switch direction halfway"
+    ]
+  },
+  {
+    "id": "leg-swings",
+    "name": "Leg Swings",
+    "type": "mobility",
+    "tips": [
+      "Set 1 left leg, set 2 right leg",
+      "Hold something for balance; front-to-back swings"
+    ]
+  },
+  {
+    "id": "worlds-greatest-stretch",
+    "name": "World's Greatest Stretch",
+    "type": "mobility",
+    "tips": [
+      "Alternate sides between sets",
+      "Lunge, elbow to instep, then rotate and reach up"
+    ]
+  },
+  {
+    "id": "bodyweight-squat",
+    "name": "Bodyweight Squat",
+    "type": "mobility",
+    "tips": [
+      "Slow and deep, chest up",
+      "Knees track over toes"
+    ]
+  },
+  {
+    "id": "glute-bridge",
+    "name": "Glute Bridge",
+    "type": "strength",
+    "tips": [
+      "Drive through the heels, squeeze glutes at the top",
+      "On the floor with your son: let him sit on your hips"
+    ]
+  },
+  {
     "id": "db-bench-press",
     "name": "Dumbbell Bench Press",
     "type": "strength",
@@ -10,13 +72,12 @@
     ]
   },
   {
-    "id": "overhead-press",
-    "name": "Barbell Overhead Press",
+    "id": "seated-db-shoulder-press",
+    "name": "Seated Dumbbell Shoulder Press",
     "type": "strength",
     "tips": [
-      "Brace glutes and abs before every rep",
-      "Keep the bar path close to your face",
-      "At the top, push your head through and pause briefly"
+      "Back against the bench, core braced",
+      "Press up and slightly in; don't flare the ribs"
     ]
   },
   {
@@ -26,6 +87,15 @@
     "tips": [
       "Bench at 30–45°",
       "Control the descent, press up and slightly in"
+    ]
+  },
+  {
+    "id": "machine-chest-press",
+    "name": "Machine Chest Press",
+    "type": "strength",
+    "tips": [
+      "Seat so the handles are at mid-chest",
+      "Full range, controlled tempo"
     ]
   },
   {
@@ -43,17 +113,7 @@
     "type": "strength",
     "tips": [
       "Raise both arms together, slightly forward of your body",
-      "Lead with the elbows and stop at shoulder height",
-      "Keep a slight bend in the elbows"
-    ]
-  },
-  {
-    "id": "skull-crusher",
-    "name": "Skull Crusher",
-    "type": "strength",
-    "tips": [
-      "Upper arms stay still, pointing slightly back",
-      "Lower the bar toward your forehead under control"
+      "Lead with the elbows and stop at shoulder height"
     ]
   },
   {
@@ -66,24 +126,21 @@
     ]
   },
   {
-    "id": "pull-ups",
-    "name": "Pull Ups",
+    "id": "skull-crusher",
+    "name": "Skull Crusher",
     "type": "strength",
     "tips": [
-      "Retract your shoulder blades first, then pull",
-      "Full dead hang at the bottom",
-      "No kipping"
+      "Upper arms stay still, pointing slightly back",
+      "Lower the bar toward your forehead under control"
     ]
   },
   {
-    "id": "barbell-row",
-    "name": "Barbell Row",
+    "id": "push-ups",
+    "name": "Push-Ups",
     "type": "strength",
     "tips": [
-      "Hands shoulder-width apart",
-      "Hinge at the hips with a flat back",
-      "Lift the bar to knee height, then row it to your navel",
-      "Use an overhand grip for 2 sets and an underhand grip for 2"
+      "As many good reps as you can, up to the top of the range",
+      "Body in one line; drop to knees when form breaks"
     ]
   },
   {
@@ -93,6 +150,54 @@
     "tips": [
       "Lean back slightly",
       "Drive the elbows down toward your hips"
+    ]
+  },
+  {
+    "id": "barbell-row",
+    "name": "Barbell Row",
+    "type": "strength",
+    "tips": [
+      "Hands shoulder-width apart",
+      "Hinge at the hips with a flat back",
+      "Lift the bar to knee height, then row it to your navel"
+    ]
+  },
+  {
+    "id": "face-pulls",
+    "name": "Face Pulls",
+    "type": "strength",
+    "tips": [
+      "Rope at upper-chest height or higher",
+      "Pull toward your forehead with hands apart",
+      "Great for desk posture"
+    ]
+  },
+  {
+    "id": "ez-bar-curl",
+    "name": "EZ-Bar Curl",
+    "type": "strength",
+    "tips": [
+      "Elbows stay at your sides",
+      "No swinging — control the way down"
+    ]
+  },
+  {
+    "id": "back-extension",
+    "name": "Back Extension",
+    "type": "strength",
+    "tips": [
+      "Hinge at the hips, stop at a straight line — don't hyperextend",
+      "Hold a plate to your chest when bodyweight gets easy"
+    ]
+  },
+  {
+    "id": "assisted-pull-ups",
+    "name": "Assisted Pull-Ups",
+    "type": "strength",
+    "tips": [
+      "Assisted machine or a band; use less assistance over time",
+      "Retract your shoulder blades first, then pull",
+      "Full dead hang at the bottom"
     ]
   },
   {
@@ -106,22 +211,21 @@
     ]
   },
   {
-    "id": "face-pulls",
-    "name": "Face Pulls",
+    "id": "seated-cable-row",
+    "name": "Seated Cable Row",
     "type": "strength",
     "tips": [
-      "Rope at upper-chest height or higher",
-      "Pull toward your forehead with hands apart",
-      "Squeeze the shoulder blades at the end"
+      "Chest tall, don't rock",
+      "Squeeze the shoulder blades together at the end"
     ]
   },
   {
-    "id": "ez-bar-curl",
-    "name": "EZ-Bar Curl",
+    "id": "reverse-fly",
+    "name": "Reverse Dumbbell Fly",
     "type": "strength",
     "tips": [
-      "Elbows stay at your sides",
-      "No swinging — control the way down"
+      "Hinge forward or lie chest-down on an incline bench",
+      "Elbows slightly bent, lead with the back of the hands"
     ]
   },
   {
@@ -134,13 +238,13 @@
     ]
   },
   {
-    "id": "smith-squat",
-    "name": "Smith Machine Squat",
+    "id": "goblet-squat",
+    "name": "Goblet Squat",
     "type": "strength",
     "tips": [
-      "Feet slightly in front of the bar",
-      "Brace, then sit down between your hips",
-      "Drive up through the whole foot"
+      "Heels on a plate, feet turned out",
+      "Go all the way down, chest up",
+      "Hold the dumbbell against your chest"
     ]
   },
   {
@@ -154,13 +258,12 @@
     ]
   },
   {
-    "id": "bulgarian-split-squat",
-    "name": "Bulgarian Split Squat",
+    "id": "walking-lunges",
+    "name": "Walking Lunges",
     "type": "strength",
     "tips": [
-      "Sets are per leg",
-      "Rear foot on the bench, front shin roughly vertical",
-      "Lower straight down under control"
+      "Reps are per leg",
+      "Dumbbell in each hand, long steps, back knee toward the floor"
     ]
   },
   {
@@ -173,15 +276,6 @@
     ]
   },
   {
-    "id": "leg-extension",
-    "name": "Leg Extension",
-    "type": "strength",
-    "tips": [
-      "Pause at the top",
-      "Don't let the weight stack slam"
-    ]
-  },
-  {
     "id": "calf-raise",
     "name": "Standing Calf Raise",
     "type": "strength",
@@ -191,12 +285,72 @@
     ]
   },
   {
+    "id": "smith-squat",
+    "name": "Smith Machine Squat",
+    "type": "strength",
+    "tips": [
+      "Feet slightly in front of the bar",
+      "Brace, then sit down between your hips",
+      "Drive up through the whole foot"
+    ]
+  },
+  {
+    "id": "hip-thrust",
+    "name": "Hip Thrust",
+    "type": "strength",
+    "tips": [
+      "Upper back on a bench, bar padded over the hips",
+      "Chin tucked, ribs down, squeeze glutes hard at the top",
+      "Counters all-day sitting"
+    ]
+  },
+  {
+    "id": "bulgarian-split-squat",
+    "name": "Bulgarian Split Squat",
+    "type": "strength",
+    "tips": [
+      "Sets are per leg",
+      "Rear foot on the bench, front shin roughly vertical",
+      "Lower straight down under control"
+    ]
+  },
+  {
+    "id": "leg-extension",
+    "name": "Leg Extension",
+    "type": "strength",
+    "tips": [
+      "Pause at the top",
+      "Don't let the weight stack slam"
+    ]
+  },
+  {
     "id": "running",
     "name": "Running",
     "type": "cardio",
     "tips": [
-      "Start the first kilometer easy",
+      "Conversational pace: you should be able to talk",
       "Relaxed shoulders, quick light steps"
+    ]
+  },
+  {
+    "id": "rope-skipping",
+    "name": "Rope Skipping",
+    "type": "cardio",
+    "tips": [
+      "Small, quick hops on the balls of your feet",
+      "Wrists turn the rope, not the arms",
+      "Too hard? March or jog in place during the work interval",
+      "Progress ~2 rounds a week toward 10 × 60 s"
+    ]
+  },
+  {
+    "id": "stair-climber",
+    "name": "Stair Climber",
+    "type": "cardio",
+    "tips": [
+      "5 min easy, 20 min moderately hard, 5 min easy",
+      "Stand tall — don't lean on the rails",
+      "Alternative: 30-min tempo run with the same structure"
     ]
   },
   {
@@ -204,8 +358,8 @@
     "name": "Walking",
     "type": "cardio",
     "tips": [
-      "Brisk, comfortable pace",
-      "Good excuse to get outside"
+      "Brisk, comfortable pace with the stroller",
+      "Good excuse to get outside together"
     ]
   },
   {
@@ -218,131 +372,32 @@
     ]
   },
   {
-    "id": "freestyle-intervals",
-    "name": "Freestyle — Main Set",
+    "id": "freestyle-steady",
+    "name": "Freestyle — Steady",
     "type": "swimming",
     "tips": [
-      "10 × 100 m at a steady, strong pace",
+      "Continuous swim at a moderate pace",
+      "Pace so you could keep going a bit longer"
+    ]
+  },
+  {
+    "id": "swim-drills",
+    "name": "Swim Technique & Drills",
+    "type": "swimming",
+    "tips": [
+      "Easy effort — your shoulders did push work this morning",
+      "4 × 50 m catch-up drill · 4 × 50 m fingertip drag · 4 × 50 m kickboard",
+      "Rest as needed between lengths"
+    ]
+  },
+  {
+    "id": "freestyle-intervals",
+    "name": "Freestyle — 100 m Repeats",
+    "type": "swimming",
+    "tips": [
+      "8–10 × 100 m at a strong, steady pace",
       "Rest ~20 s at the wall between repeats",
       "Breathe every 3 strokes if you can"
-    ]
-  },
-  {
-    "id": "crunches",
-    "name": "Crunches",
-    "type": "strength",
-    "tips": [
-      "Lift the shoulder blades, not the neck",
-      "Exhale on the way up"
-    ]
-  },
-  {
-    "id": "bicycle-crunches",
-    "name": "Bicycle Crunches",
-    "type": "strength",
-    "tips": [
-      "Elbow toward the opposite knee",
-      "Slow and controlled beats fast"
-    ]
-  },
-  {
-    "id": "lying-leg-raises",
-    "name": "Lying Leg Raises",
-    "type": "strength",
-    "tips": [
-      "Lower back pressed into the floor",
-      "Lower the legs slowly"
-    ]
-  },
-  {
-    "id": "russian-twists",
-    "name": "Russian Twists",
-    "type": "strength",
-    "tips": [
-      "Lean back with a straight spine",
-      "Rotate from the torso, not just the arms"
-    ]
-  },
-  {
-    "id": "mountain-climbers",
-    "name": "Mountain Climbers",
-    "type": "strength",
-    "tips": [
-      "Hips level with the shoulders",
-      "Drive the knees toward the chest"
-    ]
-  },
-  {
-    "id": "dead-bug",
-    "name": "Dead Bug",
-    "type": "strength",
-    "tips": [
-      "Lower back stays on the floor",
-      "Opposite arm and leg move together"
-    ]
-  },
-  {
-    "id": "plank",
-    "name": "Plank",
-    "type": "strength",
-    "tips": [
-      "Squeeze glutes and abs",
-      "Straight line from head to heels"
-    ]
-  },
-  {
-    "id": "side-plank",
-    "name": "Side Plank",
-    "type": "strength",
-    "tips": [
-      "Set 1 left side, set 2 right side",
-      "Hips high, body in one line"
-    ]
-  },
-  {
-    "id": "hollow-hold",
-    "name": "Hollow Body Hold",
-    "type": "strength",
-    "tips": [
-      "Lower back glued to the floor",
-      "Bend the knees to make it easier"
-    ]
-  },
-  {
-    "id": "cat-cow",
-    "name": "Cat-Cow",
-    "type": "mobility",
-    "tips": [
-      "Move slowly with your breath",
-      "Round and arch through the whole spine"
-    ]
-  },
-  {
-    "id": "worlds-greatest-stretch",
-    "name": "World's Greatest Stretch",
-    "type": "mobility",
-    "tips": [
-      "Set 1 left side, set 2 right side",
-      "Lunge, elbow to instep, then rotate and reach up"
-    ]
-  },
-  {
-    "id": "hip-flexor-stretch",
-    "name": "Half-Kneeling Hip Flexor Stretch",
-    "type": "mobility",
-    "tips": [
-      "Set 1 left side, set 2 right side",
-      "Squeeze the glute of the back leg",
-      "Tuck the pelvis — don't arch the lower back"
-    ]
-  },
-  {
-    "id": "hip-90-90",
-    "name": "90/90 Hip Switches",
-    "type": "mobility",
-    "tips": [
-      "Sit tall",
-      "Rotate both knees side to side slowly"
     ]
   },
   {
@@ -356,6 +411,43 @@
     ]
   },
   {
+    "id": "thread-the-needle",
+    "name": "Thread the Needle",
+    "type": "mobility",
+    "tips": [
+      "Set 1 left arm, set 2 right arm",
+      "On all fours, slide one arm under and rotate"
+    ]
+  },
+  {
+    "id": "hip-90-90",
+    "name": "90/90 Hip Switches",
+    "type": "mobility",
+    "tips": [
+      "Sit tall",
+      "Rotate both knees side to side slowly"
+    ]
+  },
+  {
+    "id": "hip-flexor-stretch",
+    "name": "Half-Kneeling Hip Flexor Stretch",
+    "type": "mobility",
+    "tips": [
+      "Set 1 left side, set 2 right side",
+      "Squeeze the glute of the back leg",
+      "Tuck the pelvis — don't arch the lower back"
+    ]
+  },
+  {
+    "id": "pigeon-stretch",
+    "name": "Pigeon Stretch",
+    "type": "mobility",
+    "tips": [
+      "Set 1 left side, set 2 right side",
+      "Square the hips, fold forward only as far as comfortable"
+    ]
+  },
+  {
     "id": "down-dog-cobra",
     "name": "Downward Dog to Cobra",
     "type": "mobility",
@@ -365,12 +457,129 @@
     ]
   },
   {
+    "id": "childs-pose",
+    "name": "Child's Pose",
+    "type": "mobility",
+    "tips": [
+      "Knees wide, reach forward",
+      "Breathe into your lower back"
+    ]
+  },
+  {
+    "id": "dead-bug",
+    "name": "Dead Bug",
+    "type": "strength",
+    "tips": [
+      "Lower back stays on the floor",
+      "Opposite arm and leg move together"
+    ]
+  },
+  {
+    "id": "bird-dog",
+    "name": "Bird Dog",
+    "type": "strength",
+    "tips": [
+      "Alternate sides each rep",
+      "Reach long, don't rotate the hips"
+    ]
+  },
+  {
+    "id": "side-plank-left",
+    "name": "Side Plank — Left",
+    "type": "strength",
+    "tips": [
+      "Hips high, body in one line",
+      "Knees down to make it easier"
+    ]
+  },
+  {
+    "id": "side-plank-right",
+    "name": "Side Plank — Right",
+    "type": "strength",
+    "tips": [
+      "Hips high, body in one line",
+      "Knees down to make it easier"
+    ]
+  },
+  {
+    "id": "plank",
+    "name": "Plank",
+    "type": "strength",
+    "tips": [
+      "Squeeze glutes and abs",
+      "Straight line from head to heels"
+    ]
+  },
+  {
+    "id": "hollow-hold",
+    "name": "Hollow Body Hold",
+    "type": "strength",
+    "tips": [
+      "Lower back glued to the floor",
+      "Bend the knees to make it easier"
+    ]
+  },
+  {
     "id": "hamstring-fold",
     "name": "Standing Forward Fold",
     "type": "mobility",
     "tips": [
       "Soft knees, let the head hang",
       "Breathe into the stretch"
+    ]
+  },
+  {
+    "id": "seated-hamstring-stretch",
+    "name": "Seated Hamstring Stretch",
+    "type": "mobility",
+    "tips": [
+      "Set 1 left leg, set 2 right leg",
+      "Hinge from the hips with a long back"
+    ]
+  },
+  {
+    "id": "butterfly-stretch",
+    "name": "Butterfly Stretch",
+    "type": "mobility",
+    "tips": [
+      "Soles together, knees drop out",
+      "Sit tall; gently lean forward"
+    ]
+  },
+  {
+    "id": "lying-spinal-twist",
+    "name": "Lying Spinal Twist",
+    "type": "mobility",
+    "tips": [
+      "Set 1 left, set 2 right",
+      "Shoulders stay on the floor, knees drop to the side"
+    ]
+  },
+  {
+    "id": "doorway-chest-stretch",
+    "name": "Doorway Chest Stretch",
+    "type": "mobility",
+    "tips": [
+      "Set 1 left arm, set 2 right arm",
+      "Forearm on the frame at shoulder height, step through"
+    ]
+  },
+  {
+    "id": "couch-stretch",
+    "name": "Couch Stretch",
+    "type": "mobility",
+    "tips": [
+      "Set 1 left leg, set 2 right leg",
+      "Back knee against the couch/wall, squeeze the glute"
+    ]
+  },
+  {
+    "id": "neck-stretch",
+    "name": "Upper Trap Neck Stretch",
+    "type": "mobility",
+    "tips": [
+      "Set 1 left, set 2 right",
+      "Ear toward shoulder, gentle pull — no forcing"
     ]
   },
   {
