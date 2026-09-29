@@ -5,109 +5,53 @@ import {
   parseExercises,
   parseSchedule,
   parseWorkouts,
-  toJson,
 } from "../domain/config";
 import type { Exercise, WeeklySchedule, Workout } from "../domain/types";
-import { ConflictError, type ConfigFile, type ConfigRepository } from "./configRepository";
+import type { Connection } from "../services/settings";
+import type { ConfigFile, ConfigRepository } from "./configRepository";
+import { GitHubContents } from "./githubContents";
 
-export interface GitHubSettings {
-  owner: string;
-  repo: string;
-  branch: string;
-  /** Repository folder holding the config JSON (Vite serves public/ at the site root). */
-  dataPath: string;
-  /** Fine-grained token with Contents read/write on this repo. Stored only in this browser. */
-  token: string;
+/** Folder of a person inside the data repo. */
+export function personDir(personId: string): string {
+  return `people/${personId}`;
 }
 
-export const DEFAULT_GITHUB_SETTINGS: Omit<GitHubSettings, "token"> = {
-  owner: "itayhzn",
-  repo: "workout-app",
-  branch: "main",
-  dataPath: "public/data",
-};
-
-function encodeBase64Utf8(text: string): string {
-  const bytes = new TextEncoder().encode(text);
-  let binary = "";
-  for (const b of bytes) binary += String.fromCharCode(b);
-  return btoa(binary);
-}
-
-function decodeBase64Utf8(b64: string): string {
-  const binary = atob(b64.replace(/\s/g, ""));
-  return new TextDecoder().decode(Uint8Array.from(binary, (c) => c.charCodeAt(0)));
+export function contentsClient(connection: Connection, fetchImpl?: typeof fetch): GitHubContents {
+  return new GitHubContents(connection, fetchImpl);
 }
 
 /**
- * Reads and writes config via the GitHub Contents API. Every write sends the SHA from the last read,
- * so GitHub rejects it if the file changed in the meantime (surfaced as ConflictError).
+ * One person's plan (people/<id>/plan/*.json in the data repo) via the Contents API, with SHA checks
+ * so a stale write surfaces as ConflictError instead of overwriting someone else's edit.
  */
 export class GitHubRepository implements ConfigRepository {
   readonly kind = "github";
   readonly writable = true;
   private readonly shas = new Map<ConfigFile, string>();
+  private readonly client: GitHubContents;
 
   constructor(
-    private readonly settings: GitHubSettings,
-    private readonly fetchImpl: typeof fetch = (...args) => fetch(...args),
-  ) {}
-
-  private url(file: ConfigFile): string {
-    const { owner, repo, dataPath } = this.settings;
-    const path = [dataPath.replace(/^\/+|\/+$/g, ""), file].filter(Boolean).join("/");
-    return `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/contents/${path}`;
+    connection: Connection,
+    private readonly personId: string,
+    fetchImpl?: typeof fetch,
+  ) {
+    this.client = contentsClient(connection, fetchImpl);
   }
 
-  private headers(): HeadersInit {
-    return {
-      Accept: "application/vnd.github+json",
-      Authorization: `Bearer ${this.settings.token}`,
-      "X-GitHub-Api-Version": "2022-11-28",
-    };
+  private path(file: ConfigFile): string {
+    return `${personDir(this.personId)}/plan/${file}`;
   }
 
   private async read(file: ConfigFile): Promise<unknown> {
-    const res = await this.fetchImpl(`${this.url(file)}?ref=${encodeURIComponent(this.settings.branch)}`, {
-      headers: this.headers(),
-      cache: "no-store",
-    });
-    if (!res.ok) throw new Error(`GitHub: failed to read ${file} (HTTP ${res.status})`);
-    const body = (await res.json()) as { content: string; sha: string };
-    this.shas.set(file, body.sha);
-    return JSON.parse(decodeBase64Utf8(body.content));
+    const got = await this.client.readJson<unknown>(this.path(file));
+    if (!got) throw new Error(`No plan found at ${this.path(file)}`);
+    this.shas.set(file, got.sha);
+    return got.data;
   }
 
   private async write(file: ConfigFile, data: unknown, message: string): Promise<void> {
-    const sha = this.shas.get(file);
-    const res = await this.fetchImpl(this.url(file), {
-      method: "PUT",
-      headers: { ...this.headers(), "Content-Type": "application/json" },
-      body: JSON.stringify({
-        message,
-        content: encodeBase64Utf8(toJson(data)),
-        branch: this.settings.branch,
-        ...(sha ? { sha } : {}),
-      }),
-    });
-    if (res.status === 409 || (res.status === 422 && !sha)) throw new ConflictError(file);
-    if (!res.ok) throw new Error(`GitHub: failed to save ${file} (HTTP ${res.status})`);
-    const body = (await res.json()) as { content?: { sha?: string } };
-    if (body.content?.sha) this.shas.set(file, body.content.sha);
-  }
-
-  /** Verifies the token can see the repository. */
-  async testConnection(): Promise<void> {
-    const { owner, repo } = this.settings;
-    const res = await this.fetchImpl(
-      `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}`,
-      { headers: this.headers() },
-    );
-    if (res.status === 401) throw new Error("GitHub rejected the token (401).");
-    if (res.status === 404) throw new Error("Repository not found, or the token cannot access it (404).");
-    if (!res.ok) throw new Error(`GitHub error (HTTP ${res.status}).`);
-    const body = (await res.json()) as { permissions?: { push?: boolean } };
-    if (body.permissions && !body.permissions.push) throw new Error("Token has read-only access to this repository.");
+    const sha = await this.client.writeJson(this.path(file), data, this.shas.get(file), message);
+    if (sha) this.shas.set(file, sha);
   }
 
   async loadExercises() {
@@ -121,12 +65,12 @@ export class GitHubRepository implements ConfigRepository {
   }
 
   async saveExercises(items: Exercise[], message = "Update exercises") {
-    await this.write("exercises.json", items.map(canonicalExercise), message);
+    await this.write("exercises.json", items.map(canonicalExercise), `${message} [${this.personId}]`);
   }
   async saveWorkouts(items: Workout[], message = "Update workouts") {
-    await this.write("workouts.json", items.map(canonicalWorkout), message);
+    await this.write("workouts.json", items.map(canonicalWorkout), `${message} [${this.personId}]`);
   }
   async saveSchedule(schedule: WeeklySchedule, message = "Update schedule") {
-    await this.write("schedule.json", canonicalSchedule(schedule), message);
+    await this.write("schedule.json", canonicalSchedule(schedule), `${message} [${this.personId}]`);
   }
 }

@@ -2,7 +2,7 @@
 
 **Goals:** general fitness, weight loss, body composition, and undoing the effects of a desk job (stiff back and hips).
 **Structure:** two sessions a day, Sunday–Friday (a morning gym+pool session and a floor session at home with your son). Saturday is a short stretch and a family walk.
-**In the app:** this plan is loaded from `public/data/` and is what the app shows each day. Sunday has **Push A + Easy Run** and **Floor: Mobility + Core**, and so on.
+**In the app:** this is the **starter plan** (`public/data/`). When you add yourself on the People page with "Starter plan", you get your own copy in the data repo, and that copy is what the app shows each day. Sunday has **Push A + Easy Run** and **Floor: Mobility + Core**, and so on.
 
 ---
 

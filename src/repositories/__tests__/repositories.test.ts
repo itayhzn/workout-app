@@ -54,6 +54,21 @@ describe("loadConfig", () => {
     expect(cfg.workouts).toHaveLength(1);
   });
 
+  it("falls back to the deployed plan when GitHub rejects the token and nothing is cached", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string) => {
+        if (String(url).startsWith("https://api.github.com")) return new Response("bad credentials", { status: 401 });
+        const name = String(url).split("/").pop()!;
+        return name in files ? new Response(JSON.stringify(files[name as keyof typeof files])) : new Response("nope", { status: 404 });
+      }),
+    );
+    const gh = new GitHubRepository({ owner: "me", repo: "r", branch: "main", token: "expired" }, "itay");
+    const cfg = await loadConfig(gh);
+    expect(cfg).toMatchObject({ source: "static", offlineError: expect.stringMatching(/401/) });
+    expect(cfg.workouts[0].id).toBe("pull");
+  });
+
   it("prefers unpublished local edits over the deployed files", async () => {
     await new LocalConfigRepository().saveWorkouts([{ ...pull, name: "Pull (edited)" }]);
     stubStaticFetch(files);
@@ -64,7 +79,7 @@ describe("loadConfig", () => {
 });
 
 describe("GitHubRepository", () => {
-  const settings = { owner: "me", repo: "workouts", branch: "main", dataPath: "public/data", token: "t" };
+  const connection = { owner: "me", repo: "workout-data", branch: "main", token: "t" };
   const b64 = (v: unknown) => btoa(unescape(encodeURIComponent(JSON.stringify(v))));
 
   it("reads with the file SHA and writes it back", async () => {
@@ -74,12 +89,12 @@ describe("GitHubRepository", () => {
       if (!init?.method) return new Response(JSON.stringify({ content: b64(exercises), sha: "sha-1" }));
       return new Response(JSON.stringify({ content: { sha: "sha-2" } }));
     });
-    const repo = new GitHubRepository(settings, fetchImpl as unknown as typeof fetch);
+    const repo = new GitHubRepository(connection, "itay", fetchImpl as unknown as typeof fetch);
     expect(await repo.loadExercises()).toHaveLength(exercises.length);
-    expect(calls[0].url).toBe("https://api.github.com/repos/me/workouts/contents/public/data/exercises.json?ref=main");
+    expect(calls[0].url).toBe("https://api.github.com/repos/me/workout-data/contents/people/itay/plan/exercises.json?ref=main");
     await repo.saveExercises([{ id: "é", name: "Élan", type: "other" }], "msg");
     const body = JSON.parse(String(calls[1].init!.body));
-    expect(body).toMatchObject({ sha: "sha-1", branch: "main", message: "msg" });
+    expect(body).toMatchObject({ sha: "sha-1", branch: "main", message: "msg [itay]" });
     expect(decodeURIComponent(escape(atob(body.content)))).toBe('[\n  {\n    "id": "é",\n    "name": "Élan",\n    "type": "other"\n  }\n]\n');
   });
 
@@ -88,7 +103,7 @@ describe("GitHubRepository", () => {
       if (!init?.method) return new Response(JSON.stringify({ content: b64(schedule), sha: "old" }));
       return new Response("conflict", { status: 409 });
     });
-    const repo = new GitHubRepository(settings, fetchImpl as unknown as typeof fetch);
+    const repo = new GitHubRepository(connection, "itay", fetchImpl as unknown as typeof fetch);
     await repo.loadSchedule();
     await expect(repo.saveSchedule(schedule)).rejects.toBeInstanceOf(ConflictError);
   });

@@ -1,8 +1,9 @@
 import { toJson } from "../domain/config";
 import type { WorkoutSession } from "../domain/types";
-import { importSessions, listSessions } from "../storage/indexedDb";
+import { enqueueSessions, importSessions, listSessions } from "../storage/indexedDb";
 import { notifyHistoryChanged } from "../state/history";
 import { downloadFile } from "./configService";
+import { requestSync } from "./syncEvents";
 
 export async function exportHistory(): Promise<number> {
   const sessions = await listSessions();
@@ -11,7 +12,7 @@ export async function exportHistory(): Promise<number> {
   return sessions.length;
 }
 
-function looksLikeSession(v: unknown): v is WorkoutSession {
+export function looksLikeSession(v: unknown): v is WorkoutSession {
   if (typeof v !== "object" || v === null) return false;
   const s = v as Record<string, unknown>;
   return (
@@ -30,6 +31,9 @@ export async function importHistoryFile(file: File): Promise<{ added: number; sk
   if (!Array.isArray(data)) throw new Error("Expected a JSON array of workout sessions.");
   const valid = data.filter(looksLikeSession);
   const result = await importSessions(valid);
+  // Imported sessions should reach other devices too (duplicates are harmless: sync merges by id).
+  await enqueueSessions(valid.map((s) => s.id));
   notifyHistoryChanged();
+  requestSync();
   return { ...result, invalid: data.length - valid.length };
 }

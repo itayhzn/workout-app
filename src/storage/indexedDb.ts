@@ -23,13 +23,27 @@ interface WorkoutDB extends DBSchema {
   syncQueue: { key: string; value: SyncQueueItem };
 }
 
-const DB_NAME = "kinetic-workout";
 const DB_VERSION = 1;
 
+// Each person on a device has their own database (see dbNameForPerson), so histories never mix.
+let dbName = "kinetic-workout";
 let dbPromise: Promise<IDBPDatabase<WorkoutDB>> | undefined;
 
+/** Points all storage calls at another database (switching person). */
+export function selectDatabase(name: string): void {
+  if (name === dbName) return;
+  const old = dbPromise;
+  dbPromise = undefined;
+  dbName = name;
+  old?.then((d) => d.close()).catch(() => {});
+}
+
+export function currentDatabaseName(): string {
+  return dbName;
+}
+
 export function db(): Promise<IDBPDatabase<WorkoutDB>> {
-  dbPromise ??= openDB<WorkoutDB>(DB_NAME, DB_VERSION, {
+  dbPromise ??= openDB<WorkoutDB>(dbName, DB_VERSION, {
     upgrade(database) {
       database.createObjectStore("configCache");
       const sessions = database.createObjectStore("workoutSessions", { keyPath: "id" });
@@ -46,6 +60,7 @@ export function db(): Promise<IDBPDatabase<WorkoutDB>> {
 export async function resetDbForTests(): Promise<void> {
   if (dbPromise) (await dbPromise).close();
   dbPromise = undefined;
+  dbName = "kinetic-workout";
 }
 
 // --- config cache -----------------------------------------------------------
@@ -157,4 +172,25 @@ export async function setAppState<T>(key: string, value: T): Promise<void> {
 
 export async function listSyncQueue(): Promise<SyncQueueItem[]> {
   return (await db()).getAll("syncQueue");
+}
+
+export async function removeFromSyncQueue(sessionIds: string[]): Promise<void> {
+  const tx = (await db()).transaction("syncQueue", "readwrite");
+  await Promise.all([...sessionIds.map((id) => tx.store.delete(id)), tx.done]);
+}
+
+export async function enqueueSessions(sessionIds: string[]): Promise<void> {
+  const tx = (await db()).transaction("syncQueue", "readwrite");
+  const queuedAt = new Date().toISOString();
+  await Promise.all([...sessionIds.map((sessionId) => tx.store.put({ sessionId, queuedAt })), tx.done]);
+}
+
+/** Queues every completed session for upload (first sync on a device). */
+export async function enqueueAllSessions(): Promise<number> {
+  const database = await db();
+  const ids = (await database.getAll("workoutSessions")).filter((s) => s.status === "completed").map((s) => s.id);
+  const tx = database.transaction("syncQueue", "readwrite");
+  const queuedAt = new Date().toISOString();
+  await Promise.all([...ids.map((sessionId) => tx.store.put({ sessionId, queuedAt })), tx.done]);
+  return ids.length;
 }

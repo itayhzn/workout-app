@@ -13,13 +13,23 @@ A personal workout app with two modes in one static site, hosted on GitHub Pages
 
 Any exercise can use any target kind; it's chosen per workout in the desktop editor.
 
+### People and sync
+
+Family and friends share one **private** data repo (e.g. `workout-data`). Each person has their own plan, history and preferences in `people/<id>/`, and everyone can see and edit everyone.
+1. Create a fine-grained token with **Contents: Read and write** on the data repo only.
+2. On your computer, go to **Settings → Shared data repository**, enter the token and click **Connect & test**, then pick who you are.
+3. Add people on the **People** page. Each starts from the starter plan, a copy of someone's plan, or an empty plan.
+4. To set up someone's phone, go to **People → Pair phone** next to their name and scan the QR code. For an iPhone home-screen app, use **Copy setup code** and paste it in the app's ⚙ settings.
+
+Each device keeps working offline and catches up when it's next online. History is merged by session and never overwritten.
+
 ### Units
 
 Weights can be shown and entered in **kg or lbs** (phone ⚙ or desktop Settings). They're always stored in kg (`weightKg`), so switching units never rewrites data.
 
 ### Training plan
 
-`public/data/` ships a two-a-day plan (details in `context/workout-plan.md`):
+`public/data/` ships the **starter plan**, a two-a-day plan (details in `context/workout-plan.md`). New people can start from it:
 - **Sun–Fri mornings:** push/pull/legs twice (A and B versions) with supersets, plus 30 min of cardio (run, run + rope, swims, stair climber), with a 7:25 leave-by countdown.
 - **Sun–Fri floor sessions:** mobility plus a core circuit or flexibility.
 - **Saturday:** a stretch and a 45-minute family walk.
@@ -47,10 +57,10 @@ npm run build      # type-check + production build into dist/
 
 | What | Where | Notes |
 |---|---|---|
-| Exercises, workouts, schedule | `public/data/*.json` | Repository-backed config, served at `<site>/data/`. |
+| Each person's exercises, workouts, schedule | `people/<id>/plan/*.json` in the private data repo | `public/data/*.json` here is the starter plan (template, and what the site shows when not connected). |
 | Exercise images | `public/images/` | Reference as `/images/name.webp`. Missing images show a placeholder. |
 | Active workout, rest timer | IndexedDB (this device) | Saved on every change; survives reloads and closing the tab. |
-| Completed workout history | IndexedDB (this device) | Export/import JSON to move it between devices (import is idempotent). |
+| Completed workout history | IndexedDB (one database per person per device), synced to `people/<id>/history/YYYY-MM.json` | Export/import JSON still works as a manual backup. |
 
 The shared data model lives in `src/domain/` and is used by both modes.
 
@@ -58,9 +68,9 @@ The shared data model lives in `src/domain/` and is used by both modes.
 
 GitHub Pages only serves static files, so the app saves configuration in one of two ways:
 
-1. **Connected to GitHub** (Settings → GitHub connection): each save commits the changed JSON file through the GitHub Contents API. The commit triggers the deploy workflow, and the live site picks up the change after about a minute. Use a [fine-grained personal access token](https://github.com/settings/personal-access-tokens/new) scoped to this repository only, with **Contents: Read and write**. The token is kept only in this browser's localStorage and is never committed.
+1. **Connected** (Settings → Shared data repository): each save commits the active person's changed plan file in the data repo through the GitHub Contents API. Other devices see it the next time they load. No redeploy is involved. Use a [fine-grained personal access token](https://github.com/settings/personal-access-tokens/new) limited to the data repo, with **Contents: Read and write**. The token is kept only in each browser's localStorage and is never committed.
    Every write includes the file's SHA. If the file changed on GitHub since it was loaded, the save is rejected, the latest version is reloaded, and your unsaved edits stay in the editor so you can review and save again.
-2. **Not connected**: saves are kept in this browser as *unpublished local edits*. They're used in place of the deployed files until you publish them to GitHub, export the JSON files and commit them by hand, or discard them.
+2. **Not connected**: saves are kept in this browser as *unpublished local edits*. They're used in place of the starter plan until you publish them to your plan in the data repo, export the JSON files, or discard them.
 
 ## Deployment
 

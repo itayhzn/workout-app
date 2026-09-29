@@ -1,6 +1,9 @@
-import { ChevronDown, ChevronRight, Download, History, Monitor, Play, RotateCcw, Scale, Settings, Volume2, VolumeX, X } from "lucide-react";
+import { ChevronDown, ChevronRight, Cloud, Download, History, Monitor, Play, RotateCcw, Scale, Settings, Volume2, VolumeX, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { SetupCodeForm } from "../../components/Pairing";
+import { PersonSwitcher } from "../../components/People";
+import { SyncBadge, SyncRow } from "../../components/SyncStatus";
 import { WeightUnitToggle } from "../../components/WeightUnitToggle";
 import { Banner, ConfirmDialog, EmptyState, Label, Modal, ProgressBar, Spinner, TypeBadge } from "../../components/ui";
 import { estimateWorkoutMinutes, formatClock, formatMinutes, formatNumber, sessionDurationMs } from "../../domain/format";
@@ -13,6 +16,7 @@ import { loadTimerSound, saveModePreference, saveTimerSound } from "../../servic
 import { useActiveWorkout } from "../../state/ActiveWorkoutContext";
 import { useConfig } from "../../state/ConfigContext";
 import { useSessions } from "../../state/history";
+import { useSync } from "../../state/SyncContext";
 import { getAppState, setAppState } from "../../storage/indexedDb";
 import { KineticMark, PhoneScreen } from "./PhoneLayout";
 import { WorkoutPreviewCard } from "./WorkoutPreviewCard";
@@ -70,7 +74,10 @@ export function PhoneHome() {
         <div className="flex items-center gap-2 font-display text-xl font-bold tracking-tight">
           <KineticMark /> KINETIC
         </div>
+        <div className="flex-1" />
+        <PersonSwitcher compact />
         <div className="flex gap-1">
+          <SyncBadge onClick={() => setSettingsOpen(true)} />
           <Link to="/history" className="btn-ghost h-11 w-11" aria-label="Workout history">
             <History size={20} />
           </Link>
@@ -264,6 +271,32 @@ export function SessionRow({ session }: { session: WorkoutSession }) {
   );
 }
 
+function PhoneSyncSettings() {
+  const { configured } = useSync();
+  const [open, setOpen] = useState(false);
+  if (configured) {
+    return (
+      <div className="card px-4 py-3">
+        <SyncRow compact />
+      </div>
+    );
+  }
+  return (
+    <div className="card">
+      <button className="flex h-14 w-full items-center gap-3 px-4 text-left" onClick={() => setOpen((o) => !o)} aria-expanded={open}>
+        <Cloud size={18} />
+        <span className="flex-1">Set up sync across devices</span>
+        <ChevronDown size={18} className={`text-ink-2 transition ${open ? "rotate-180" : ""}`} />
+      </button>
+      {open && (
+        <div className="px-4 pb-4">
+          <SetupCodeForm onConnected={() => setOpen(false)} />
+        </div>
+      )}
+    </div>
+  );
+}
+
 function PhoneSettings({ open, onClose }: { open: boolean; onClose: () => void }) {
   const navigate = useNavigate();
   const [sound, setSound] = useState(loadTimerSound);
@@ -282,6 +315,7 @@ function PhoneSettings({ open, onClose }: { open: boolean; onClose: () => void }
           <span className="flex-1">Rest timer sound</span>
           <span className={`font-display text-sm font-bold ${sound ? "text-volt" : "text-ink-3"}`}>{sound ? "ON" : "OFF"}</span>
         </button>
+        <PhoneSyncSettings />
         <div className="card flex h-14 items-center gap-3 px-4">
           <Scale size={18} />
           <span className="flex-1">Weight unit</span>

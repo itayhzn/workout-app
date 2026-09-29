@@ -15,6 +15,8 @@ A personal workout app that runs entirely as a static site on **GitHub Pages**. 
 
 The mode is chosen per device. Phones and touch screens get workout mode; desktops get management mode. A saved preference overrides that default (see `services/settings.ts`).
 
+**Several people (family and friends) share the app.** Each person has their own plan, history and preferences in one shared private data repo, and everyone can see and edit everyone. Each device picks who it belongs to ("Who's working out?") and can switch person at any time. Without a connection, the app runs as a single local user on the starter plan that ships with the site.
+
 The original product specs and mockups are in this folder (`phone-*.md`, `computer-*.md`, `*_screen_design.zip`). The visual design system ("Kinetic Obsidian") is described in `DESIGN.md` inside the zips.
 
 ---
@@ -47,7 +49,7 @@ GitHub Pages serves static files only. These constraints drive the design:
 
 - **Hash routing** (`createHashRouter`). URLs look like `/workout-app/#/workout/<id>`, so deep links and reloads never hit a missing server path.
 - **Relative base** (`base: "./"` in `vite.config.ts`). The build works under any Pages sub-path. Image and data URLs are resolved with `import.meta.env.BASE_URL`.
-- **No server writes.** Configuration edits are committed through the **GitHub Contents API** with a personal token that the user enters (§6.3). Runtime data such as the active workout and history stays on the device in **IndexedDB**.
+- **No server writes.** Plans, history and preferences are read and written in a **private data repo** (`workout-data`) through the **GitHub Contents API**, with one shared token entered on each device (§6.3–6.5). Runtime data such as the active workout and history stays on the device in **IndexedDB**.
 - **Offline.** `vite-plugin-pwa` precaches the app shell. Config JSON uses network-first caching and images use cache-first. Fonts come from `@fontsource`, not a CDN, so they work offline too.
 - **Deploy.** `.github/workflows/deploy.yml` runs tests, builds and deploys `dist/` on every push to `main`. In the repo settings, Pages → Source must be set to **GitHub Actions**.
 
@@ -94,7 +96,7 @@ There are two kinds of data, and they are stored and saved in completely differe
 
 | Kind | Entities | Source of truth | Persistence |
 |---|---|---|---|
-| **Configuration** | `Exercise`, `Workout` (+ `WorkoutExercise` targets), `WeeklySchedule` | Repository JSON in `public/data/` | Committed via GitHub API, or kept as browser-local edits |
+| **Configuration** (per person) | `Exercise`, `Workout` (+ `WorkoutExercise` targets), `WeeklySchedule` | `people/<id>/plan/*.json` in the data repo. `public/data/` in the app repo is only the **starter plan**: a template for new people and what the site shows when not connected | Committed via GitHub API, or kept as browser-local edits |
 | **Runtime / history** | `WorkoutSession`, `RestTimerState`, `IntervalTimerState` | The device | IndexedDB only (history can be exported and imported as JSON) |
 
 ### Key entities
@@ -126,10 +128,10 @@ There are two kinds of data, and they are stored and saved in completely differe
 | Store | Keys | Contents |
 |---|---|---|
 | `configCache` | `"config"` | Last good config + `source` (`static`/`github`/`local`) + `localEdits` flag |
-| `workoutSessions` | `id` (index `completedAt`) | Completed sessions (history) |
+| `workoutSessions` | `id` (index `completedAt`) | Completed sessions (history), including ones downloaded from other devices |
 | `activeWorkout` | `"session"`, `"restTimer"`, `"intervalTimer"` | The one in-progress session and its timers |
-| `appState` | free-form | e.g. `lastSelectedWorkout` |
-| `syncQueue` | `sessionId` | Finished sessions queued for a future repository sync (no consumer yet) |
+| `appState` | free-form | `lastSelectedWorkout`; `syncState` (last seen SHA per month file, last sync time, whether the first upload has been done) |
+| `syncQueue` | `sessionId` | Sessions waiting to be uploaded by sync (finished workouts, imports, first-sync backfill) |
 
 `commitCompletedSession` moves a finished session into history, clears the active state and adds the session to `syncQueue` in **one transaction**. If it fails, the active workout is left untouched.
 
@@ -139,22 +141,52 @@ When you change the schema, increase `DB_VERSION` and handle the migration in `u
 | Key | Meaning |
 |---|---|
 | `kinetic.mode` | `"workout"` / `"manage"` (absent means auto-detect) |
-| `kinetic.weightUnit` | `"kg"` / `"lbs"` |
-| `kinetic.timerSound` | boolean |
-| `kinetic.github` | GitHub connection settings **including the token** (never committed) |
+| `kinetic.connection` | The shared data repo `{ owner, repo, branch, token }` (never committed). Replaces the single-user `kinetic.github`, which is migrated automatically |
+| `kinetic.person` | The active person's id on this device |
+| `kinetic.people` | Cached list of people (from `people.json`), for offline use |
+| `kinetic.dbNames` | Which IndexedDB database belongs to which person on this device |
+| `kinetic.p.<person>.weightUnit` / `.timerSound` / `.prefsUpdatedAt` | Per-person preferences. Reads fall back to the old device-wide `kinetic.<name>` keys |
 | `kinetic.exerciseView` | `"grid"` / `"table"` on the Exercises page |
 | `kinetic.activeSessionBackup` | Mirror of the active session, in case IndexedDB fails |
 
 ### 6.3 Configuration load and save (`services/configService.ts`, `state/ConfigContext.tsx`)
 **Load order:**
 1. If the cache holds unpublished **local edits**, use them (never discard them silently).
-2. Otherwise load from the **remote**: the GitHub API if a token is set up, else the deployed JSON. Then refresh the cache.
+2. Otherwise load from the **remote**: the active person's `people/<id>/plan/` in the data repo when connected, else the starter plan deployed with the site. Then refresh the cache.
 3. If that fails (offline or corrupt JSON), use the **cached copy** and show a banner. Only if there's no cache does the app show an error. A failed config refresh never blocks an active workout.
 
 **Saves are per entity.** Examples: `saveExercise`, `deleteExercise`, `saveWorkout`, `deleteWorkout` (removes the workout from the schedule first), `saveSchedule`. Each one validates, applies the change to the latest in-memory config, and writes **one file**.
 - **Connected to GitHub:** `GitHubRepository` PUTs the file with the SHA from the last read. HTTP 409 (or 422 without a SHA) becomes a `ConflictError`. The context then reloads the latest data and rethrows. Editors keep their draft, so the user reviews and saves again, and the change lands on the latest file. Nothing is overwritten blindly.
 - **Not connected:** `LocalConfigRepository` writes to `configCache` with `localEdits: true`. Settings offers **Publish to GitHub**, **Export JSON files**, or **Discard**.
 - Saved JSON is canonical (`config.ts`): stable key order, no `undefined`/empty fields, 2-space indent and a trailing newline, so commits stay small.
+
+### 6.4 Cross-device sync (`services/syncService.ts`, `state/SyncContext.tsx`)
+The active person's history and preferences sync through the data repo. The layout is described in that repo's README:
+
+- `people/<id>/history/YYYY-MM.json`: completed sessions, one file per UTC month of `completedAt`. Sessions are immutable, so files are merged by `id`; nothing is ever overwritten or deleted.
+- `people/<id>/preferences.json`: `weightUnit`, `timerSound`, `updatedAt`. The newest write wins.
+
+`runSync` does four things in order:
+1. On a device's first sync, queue all existing local history for upload.
+2. **Push** the queue month by month: read, import remote sessions, merge, write with the SHA, and on a conflict re-read and retry.
+3. **Pull** only month files whose SHA changed since last time.
+4. Reconcile preferences.
+
+`SyncProvider` runs it on start, on `requestSync()` (called after a finished workout and after a history import), when the device comes back online, and when the app returns to the foreground (throttled to every 2 minutes). Only one sync runs at a time.
+
+**Pairing:** `services/pairing.ts` encodes the connection (including the token) and, optionally, a person id into a `KW2.…` setup code. The desktop **People** page shows it per person as a QR code for `#/pair/<code>` or as copyable text. The phone either opens that link (`PairPage`) or pastes the code in its ⚙ sheet. Pasting is required for iPhone home-screen apps, because their storage is separate from Safari's. A code without a person leads to "Who's working out?".
+
+**Testing:** `test/fakeGitHub.ts` is an in-memory Contents API that enforces SHA checks like GitHub, with `beforeNextPut` to simulate another device saving just before you. Use it for anything that talks to GitHub.
+
+### 6.5 People (`services/people.ts`, `state/PeopleContext.tsx`, `App.tsx`)
+- **The list of people** is `people.json` in the data repo: `[{ id, name, createdAt }]`. Ids are readable slugs (`noa`, `noa-2`) and never change when someone is renamed. Every change to the list reads it, changes it and writes it back with the SHA, retrying on a conflict, so two people adding someone at the same time both survive.
+- **Adding a person** writes their plan first (the starter plan, a copy of someone's plan, or an empty plan) and then adds them to the list, so a person never exists without a plan.
+- **Per-person scope:**
+  - `PersonScope` in `App.tsx` wraps the config, active-workout and sync providers, and is **keyed on the active person**. Switching person remounts all of them.
+  - Before anything mounts, `PersonData` calls `selectDatabase(dbNameForPerson(id))`, so every `storage/indexedDb.ts` call goes to that person's own database.
+  - The first person picked on a device inherits the existing `kinetic-workout` database, which holds history logged before connecting. Later people get `kinetic-workout--<id>`.
+- **Preferences** use per-person localStorage keys (`writePersonPref` / `readPersonPref`), and units re-render on `onPersonChanged`.
+- **Gate:** on a connected device with no active person, `Root` renders `WhoAreYou` instead of any route, except `/pair/*`.
 
 ---
 
@@ -187,7 +219,9 @@ When you change the schema, increase `DB_VERSION` and handle the migration in `u
 | `/manage/workouts[/:id\|/new]` | Template list + editor (drag-and-drop with up/down fallback) |
 | `/manage/schedule` | Week grid (Sunday first), drag between days, Assign dropdown |
 | `/manage/history[/:sessionId]` | Filterable table + detail, import/export |
-| `/manage/settings` | Config source, GitHub connection, history transfer, device prefs |
+| `/manage/people` | Everyone in the data repo: add (with a starting plan), rename, switch to, pair a phone |
+| `/manage/settings` | Config source, shared data repository connection, sync status, history transfer, device prefs |
+| `/pair/:code` | Confirm and connect this device from a pairing QR code |
 
 Editors use `UnsavedChangesGuard` (`useBlocker` + `beforeunload`). `useBlocker` needs the **data router**, which is why the app uses `createHashRouter` + `RouterProvider`.
 
@@ -222,7 +256,7 @@ Editors use `UnsavedChangesGuard` (`useBlocker` + `beforeunload`). `useBlocker` 
 5. `domain/session.ts`: `createSession`, `finishSession`, `sessionStats`, skip/unskip.
 6. UI: the `ExercisePage` variant, `WorkoutPage` summaries, `SessionDetail`, and the row editor plus `TARGET_KIND_LABEL` in `WorkoutsPage`.
 
-**Change the shipped training plan.** The plan is described for people in [`workout-plan.md`](workout-plan.md). Edit `public/data/*.json`, or change it in the app and save. `plan.test.ts` protects the plan's requirements (morning time budget, no running on or right after a leg day, floor ≤ 30 min, and so on), so update it and `workout-plan.md` together when the plan changes.
+**Change a plan.** Each person's plan lives in the data repo, so edit it in the app (as that person) or in `people/<id>/plan/`. `public/data/*.json` is the **starter plan**: the template for new people and what the site shows when not connected. It's described in [`workout-plan.md`](workout-plan.md), and `plan.test.ts` protects its requirements (morning time budget, no running on or right after a leg day, floor ≤ 30 min, and so on). Update the test and `workout-plan.md` together when the starter plan changes.
 
 **Add a device preference.** Put it in `services/settings.ts` (or a `useSyncExternalStore` store like `state/units.ts` if components must re-render when it changes), and add a control to the phone settings sheet (`PhoneHome.tsx`) and to `SettingsPage.tsx`.
 
@@ -238,5 +272,8 @@ Editors use `UnsavedChangesGuard` (`useBlocker` + `beforeunload`). `useBlocker` 
 - **"blocker on a POP navigation" console warning.** It appears when you edit the URL hash by hand while an editor has unsaved changes. Navigating inside the app doesn't trigger it.
 - **Changing the week order** changes the key order that `canonicalSchedule` writes into `schedule.json`. Expect a one-off reordering diff.
 - **Estimates** (`estimateWorkoutMinutes`) are rough on purpose. Strength counts 45s of work plus rest per set, plus setup time. Under 20 minutes they round to the minute, above that to 5 minutes.
-- **The GitHub token is stored per browser.** Every computer that edits config needs its own token. Phones only read the plan, so they don't need one.
-- **History isn't synced.** Moving history between devices is manual export/import, and the import is idempotent by session ID. `syncQueue` is already filled for a future sync feature.
+- **One token for everyone.** It's stored in each browser (never committed) and gives read/write access to everyone's data. That's intended, since everyone can see everything. Hand it out through pairing codes, not in chats.
+- **Switching person is a remount.** Any state that must survive a switch belongs above `PersonScope` (like `PeopleProvider`). Anything per-person belongs below it, or in per-person storage.
+- **Sync never deletes.** If you add a "delete session" feature, it needs tombstones (a list of deleted IDs) or other devices will bring the session back.
+- **Browser testing:** `page.goto` to the same URL with only a different `#hash` doesn't reload the page, so you keep testing the old build. Force a reload with `location.reload()`.
+- **A bad token must never lock you out.** `loadConfig` falls back to the deployed plan when GitHub fails and nothing is cached, and `ManageLayout` always renders Settings. Keep both when changing config loading.
