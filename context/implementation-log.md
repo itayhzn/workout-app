@@ -2,11 +2,22 @@
 
 A record of what was built, the decisions made along the way, and the bugs found and fixed, newest first. For how the app works today, see [`dev-onboarding.md`](dev-onboarding.md).
 
-**Current state (2026-09-28)**
-- The code is on the `feature/workout-app` branch and pushed. Commit `0ad4a3b` contains entries 1–3, `d51488a` contains entries 4–5, and the "Add cross-device sync and multiple people" commit contains entries 6–7.
-- The private data repo `itayhzn/workout-data` exists. Its `main` has only a README describing the layout (commits `25f3065`, `d407d0b`). No people or data yet.
-- The app hasn't been merged to `main`, and GitHub Pages isn't enabled on the repo yet. Once it's merged and Pages is set to "GitHub Actions", the site will be at `https://itayhzn.github.io/workout-app/`.
+**Current state (2026-09-30)**
+- **Live** at `https://itayhzn.github.io/workout-app/`: the feature branch was merged to `main` (PR #3) and GitHub Pages deploys via GitHub Actions.
+- The private data repo `itayhzn/workout-data` is in use. People: Itay (the starter two-a-day plan plus a daily Posture Reset, with workouts syncing) and Gal (her own plan, see entry 8).
 - Tests: 88 passing (unit + integration). Typecheck and production build are clean.
+
+---
+
+## 8. Plans for Gal, and a daily Posture Reset for both — 2026-09-30
+
+Data only; no app code changed. Written directly to the data repo (`itayhzn/workout-data`, commits `66f4f07` and `02a499f`).
+
+- **Gal** (`people/gal/plan/`, previously the empty plan): 2 full-body gym sessions, Mon "Gym A — Glutes & Back" and Thu "Gym B — Posterior Chain & Upper Back". Each is a 5-min warm-up + ~35 min of strength with supersets + an 8-min, 2-round core circuit, so ≈50 min. Plus Wed yoga class (50-min activity), Sat family walk (45 min), and a daily Posture Reset. Aimed at postural kyphosis: about 2 pulls per push, lower-trap work, stability-based core. Weights are conservative starting points. Full description in [`workout-plan-gal.md`](workout-plan-gal.md).
+- **Itay:** the same daily **Posture Reset** (5 min, 6 no-equipment moves) was appended to his plan and added to every day of his schedule. Nothing existing was changed. Documented in [`workout-plan.md`](workout-plan.md).
+- **How it was checked:** a temporary test (deleted afterwards) ran both plans through the app's own parser and `validateConfiguration` (no errors). It confirmed the files are byte-identical to what the app writes, so a later in-app edit produces a clean diff, and measured the durations: gym ≈ 4.9 + 35.5 + 8.2 min, posture 5.0 min.
+- **Starter plan unchanged:** `public/data/` and its `plan.test.ts` rules (two sessions per training day) are untouched. The posture routine exists only in the two people's plans.
+- **Noticed:** a yoga class is logged as a cardio activity, so its screen shows a distance field that doesn't apply. It works (tap Complete activity), but hiding distance for non-running activities would be a small improvement.
 
 ---
 

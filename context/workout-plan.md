@@ -134,6 +134,12 @@ standing forward fold 60s · seated hamstring 2×45s (L/R) · butterfly 60s · l
 
 ---
 
+## Posture Reset (daily, 5 min, added 2026-09-30)
+
+Your copy of the plan (`people/itay/plan/`) also has a daily **Posture Reset**, a third short session every day of the week. It's hands-free and needs no equipment: chin tucks 40s · wall angels 45s · chair thoracic extension 45s · floor Y-raises 40s · shoulder blade squeezes 40s · doorway chest stretch 2×30s. The details are in [`workout-plan-gal.md`](workout-plan-gal.md#posture-reset-daily-5-min-no-equipment), since Gal does the same routine. The starter plan in `public/data/` doesn't include it.
+
+---
+
 ## Saturday
 
 - **Stretch (≈7 min):** cat-cow 45s · world's greatest stretch 2×40s · half-kneeling hip-flexor 2×40s · standing forward fold 45s · lying spinal twist 2×40s · child's pose 45s.
