@@ -19,6 +19,7 @@ import {
 } from "../domain/intervals";
 import type { Exercise, IntervalTimerState, RestTimerState, Workout, WorkoutSession } from "../domain/types";
 import { countdownTick, holdWakeLock, intervalPhaseFeedback } from "../services/feedback";
+import { requestSync } from "../services/syncEvents";
 import {
   clearActiveWorkout,
   commitCompletedSession,
@@ -303,6 +304,7 @@ export function ActiveWorkoutProvider({ children }: { children: ReactNode }) {
       setIntervalTimer(undefined);
       backup(undefined);
       notifyHistoryChanged();
+      requestSync();
       return done;
     },
     [],

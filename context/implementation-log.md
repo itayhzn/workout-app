@@ -3,9 +3,109 @@
 A record of what was built, the decisions made along the way, and the bugs found and fixed, newest first. For how the app works today, see [`dev-onboarding.md`](dev-onboarding.md).
 
 **Current state (2026-09-28)**
-- The code is on the `feature/workout-app` branch and pushed. Commit `0ad4a3b` contains entries 1–3; `d51488a` contains entries 4–5 and the `context/` docs.
-- It hasn't been merged to `main`, and GitHub Pages isn't enabled on the repo yet. Once it's merged and Pages is set to "GitHub Actions", the site will be at `https://itayhzn.github.io/workout-app/`.
-- Tests: 72 passing (unit + integration). Typecheck and production build are clean.
+- The code is on the `feature/workout-app` branch and pushed. Commit `0ad4a3b` contains entries 1–3, `d51488a` contains entries 4–5, and the "Add cross-device sync and multiple people" commit contains entries 6–7.
+- The private data repo `itayhzn/workout-data` exists. Its `main` has only a README describing the layout (commits `25f3065`, `d407d0b`). No people or data yet.
+- The app hasn't been merged to `main`, and GitHub Pages isn't enabled on the repo yet. Once it's merged and Pages is set to "GitHub Actions", the site will be at `https://itayhzn.github.io/workout-app/`.
+- Tests: 88 passing (unit + integration). Typecheck and production build are clean.
+
+---
+
+## 7. Multiple people — 2026-09-29
+
+Family and friends each get their own plan, history and preferences. Decisions from the discussion: **one shared private repo**, where everyone can see and edit everyone; people use their own devices, several at the same time; and anyone can edit any plan.
+
+### Design
+- **Data repo layout** (documented in `workout-data/README.md`):
+  - `people.json`: the list of everyone, `[{ id, name, createdAt }]`.
+  - Per person: `people/<id>/plan/{exercises,workouts,schedule}.json`, `people/<id>/history/YYYY-MM.json`, and `people/<id>/preferences.json`.
+- **Plans left the public app repo.** `public/data/` is now the **starter plan**: the template for new people and what the site shows when not connected. Saving a plan edits the person's file in the data repo, so there's no site redeploy per edit, and the token only needs access to the data repo.
+- **Connection** (`services/settings.ts`): the device-wide `{ owner, repo, branch, token }` for the data repo, stored as `kinetic.connection`. Settings saved by the single-user version (`kinetic.github` with `syncRepo`) are migrated automatically.
+- **Choosing a person:**
+  - `kinetic.person` holds the active person on the device.
+  - A connected device with no active person shows **"Who's working out?"** (`WhoAreYou`): pick someone, or add a person with a starting plan (starter plan, a copy of someone's plan, or empty).
+  - A person switcher (avatar) sits in the phone header and desktop sidebar.
+- **Per-person data on a device:**
+  - `PersonScope` wraps the config, active-workout and sync providers and is keyed on the active person, so switching remounts all of them.
+  - `selectDatabase(dbNameForPerson(id))` points IndexedDB at that person's own database. The **first** person picked on a device inherits the existing database (history logged before connecting), and later people get `kinetic-workout--<id>`.
+  - Preferences (kg/lbs, sound, their timestamp) use per-person localStorage keys, with a fallback to the old device-wide keys.
+- **Plan and sync paths:** `GitHubRepository` now reads and writes `people/<id>/plan/*`. `runSync(client, personId)` uses `people/<id>/history` and `people/<id>/preferences.json`.
+- **People page** (`/manage/people`): add a person, rename (the id stays the same), switch to, and **Pair phone**.
+- **Pairing** is per person: setup codes are `KW2.` + base64url of `{ connection, personId? }`.
+- **The list of people** is read, changed and written back with the SHA, and retried on a conflict (`services/people.ts`). Adding someone writes their plan **before** adding them to the list, so a person never exists without a plan.
+- **Settings:** "GitHub connection" became **Shared data repository** (owner, repo, branch, token). The Sync section shows the active person and links to People for pairing.
+
+### Tests added (88 total)
+- `services/__tests__/people.test.ts`: readable, unique ids; adding a person seeds their plan and the list; two devices adding people at once both survive; renaming keeps the id.
+- `__tests__/multiUser.test.tsx`: pick a person, see their plan; switch to another person, see their plan and not the first person's workout in progress; switch back and it's still there.
+- `__tests__/pairing.test.tsx`: a code naming a person connects straight to them and syncs `people/<id>/history`; a code without a person leads to "Who's working out?"; a damaged link shows an error.
+- Updated `repositories.test.ts` (plan paths under `people/<id>/plan`, commit messages tagged with the person) and `sync.test.ts` (paths under `people/<id>/`).
+
+### Checked in a browser
+The GitHub API was faked **inside the page** with an in-memory repo, so nothing touched the real repository. Checked: "Who's working out?", picking a person (their plan loads and sync shows green), adding a person from the People page, and the per-person pairing QR code.
+
+### Fixes found in that check
+| Issue | Fix |
+|---|---|
+| The "Starter plan (the plan that ships with the app)" option was cut off in the select | Shortened to "Starter plan" |
+| People rows wrapped their actions onto a second line except for the active person | Icon-only Rename and "Pair phone", so every row fits on one line |
+
+### Decisions
+- **Folders in one repo instead of a repo per person.** Chosen by the user: family and friends, everyone may see everything. GitHub can't limit a token to one folder, so privacy between people isn't possible with this layout (a repo per person would be needed).
+- **A separate database per person instead of tagging records with a person id.** Isolation needs no query changes anywhere, and switching is a clean remount.
+- **Exercises are per person, not a shared library.** Everyone can customize freely, and deleting an exercise can never break someone else's workout. The cost is some duplication.
+
+---
+
+## 6. Cross-device sync through a private GitHub repo — 2026-09-29
+
+Workout history used to exist only on the device where it was logged. Now it follows you between devices, and so do the "last time" numbers and progression hints, which are built from history.
+
+### Design
+- **Storage:** a separate **private** repo, `itayhzn/workout-data`, rather than the public app repo. That keeps history private and stops sync commits from redeploying the site.
+  - `history/YYYY-MM.json`: completed sessions, one file per UTC month of completion, sorted by `completedAt`.
+  - `preferences.json`: `{ weightUnit, timerSound, updatedAt }`.
+- **Local-first.** IndexedDB stays each device's copy of the data. Logging never waits on the network, and sync only ever *adds*: history is immutable and merged by session `id`.
+- **Sync pass** (`services/syncService.ts`, `runSync`):
+  1. **First sync on a device:** queue all existing local history for upload (`enqueueAllSessions`).
+  2. **Push:** group queued sessions by month. For each month: read the file and its SHA, import the remote sessions locally, merge, and write back with the SHA. If GitHub rejects the write because another device saved in between, re-read, re-merge and retry (up to 3 times). Queue entries are removed only after a successful write.
+  3. **Pull:** list `history/`, and download only month files whose SHA differs from the last one seen (`syncState.monthShas` in `appState`).
+  4. **Preferences:** the newest `updatedAt` wins. Local changes are timestamped by `setWeightUnit` / `saveTimerSound` through `markPrefsChanged`.
+- **When it runs** (`state/SyncContext.tsx`): on app start, after each finished workout and after a history import (`requestSync()`), when the device comes back online, and when the app returns to the foreground (at most every 2 minutes). Also from the **Sync now** button. Only one sync runs at a time.
+- **Configuration:** `GitHubSettings.syncRepo` (default `workout-data`, same owner and token as the app repo). "Connect & test" now checks push access on both repos.
+- **Pairing another device** (`services/pairing.ts`):
+  - A **setup code** (`KW1.` + base64url of the settings, including the token) and a QR code for `#/pair/<code>`.
+  - The pairing page asks for confirmation, tests the connection, saves the settings and syncs. It removes the code from the address bar as soon as it reads it.
+  - The QR is hidden until you ask for it, with a warning that it contains the token.
+  - The phone settings sheet also accepts a **pasted** code. That's needed for iPhone home-screen apps, which don't share storage with Safari: a QR scan opens Safari, not the installed app.
+- **UI:**
+  - A sync badge in the phone home header (synced / syncing / offline / failed, tap for settings).
+  - A sync line in the desktop sidebar.
+  - A "Cross-device sync" section in Settings: status, pending count, Sync now, and pairing.
+- **Refactor:** `repositories/githubContents.ts` is a shared Contents API client (read/write JSON with SHA, list folders, test write access). `GitHubRepository` (the plan) now uses it.
+
+### Bugs found and fixed
+| Bug | Cause | Fix |
+|---|---|---|
+| With an invalid or expired token and no cached plan, all of management mode showed only an error, **including Settings, where the token gets fixed** (found while checking the new Settings screen in a browser) | `ManageLayout` replaced every page with the error banner; `loadConfig` threw when GitHub failed and nothing was cached | `loadConfig` falls back to the plan deployed with the site, with a warning banner that links to Settings. Settings always renders. Regression test added |
+| Raw "HTTP 401" errors gave no hint what to do | Generic error text | 401 and 403 now say to update the token, or to give it Contents: Read and write |
+| Sidebar said "Offline · cached copy" when the real cause was a rejected token | Every load failure was labelled "offline" | Now "Plan not refreshed · saved copy", with the details in the banner |
+
+### Tests added (82 total)
+- `test/fakeGitHub.ts`: an in-memory Contents API that enforces SHA checks (409 for a stale SHA, 422 for a missing one), with a hook to simulate another device writing just before a save.
+- `services/__tests__/sync.test.ts`:
+  - month bucketing and merging
+  - setup-code round-trip and rejection of damaged codes
+  - first sync uploads existing history, and a second sync makes no writes and downloads nothing
+  - downloading sessions written by another device
+  - two devices saving the same month at once end up merged, not overwritten
+  - offline: finished workouts stay queued, then upload when back online
+  - preferences: newest change wins, in both directions
+- `__tests__/pairing.test.tsx`: a pairing link connects the device and syncs; a damaged link shows an error.
+
+### Decisions
+- **GitHub instead of a hosted database** (Supabase/Firebase). There's no new account or service, the data stays yours as plain JSON with history, and it matches the spec's "no cloud backend" rule. The trade-off is that sync happens when the app opens or a workout finishes, not in real time.
+- **Monthly files instead of one file per session.** This follows the spec: few files, cheap listing, and one commit per sync.
+- **The in-progress workout isn't synced.** You run a workout on one device, and syncing it would bring edit conflicts in exchange for very little benefit.
 
 ---
 
@@ -182,7 +282,11 @@ Built from the specs in this folder (`phone-*.md`, `computer-*.md`) and the Stit
 
 ## Known limitations and possible next steps
 
-- **No history sync between devices** (export/import only). A v2 **Sync** action could push `syncQueue` sessions to monthly files such as `data/history/2026-09.json`, merging by session ID.
+- **Sync isn't real-time.** It runs on app open, after a finished workout, when coming back online or to the foreground, and from Sync now.
+- **People can't be deleted from the app.** You can rename someone, but removing them means editing `people.json` and their folder by hand.
+- **A pairing code can't be revoked.** Everyone shares one token, so removing someone's access means creating a new token and re-pairing every device.
+- **Exercise libraries aren't shared.** Each person's plan has its own exercise library.
+- **History can't be deleted.** There's no delete feature, and sync never removes sessions. Removing one would mean editing the month file and each device's local copy.
 - **No pyramids.** Rep ranges are supported (entry 5), but per-set targets like 10/8/8/6 aren't.
 - **Superset rest is set on the last member only.** The first member's `restSeconds` is ignored inside a superset. The desktop editor doesn't point this out yet.
 - **No exercise images.** Everything shows type-icon placeholders until files are added to `public/images/`.

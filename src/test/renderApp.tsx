@@ -1,9 +1,8 @@
 import { render } from "@testing-library/react";
 import { RouterProvider, createMemoryRouter } from "react-router-dom";
 import { vi } from "vitest";
-import { routes } from "../App";
-import { ActiveWorkoutProvider } from "../state/ActiveWorkoutContext";
-import { ConfigProvider } from "../state/ConfigContext";
+import { PersonScope, routes } from "../App";
+import { PeopleProvider } from "../state/PeopleContext";
 
 export function stubConfigFetch(files: Record<string, unknown>) {
   vi.stubGlobal(
@@ -18,11 +17,11 @@ export function stubConfigFetch(files: Record<string, unknown>) {
 export function renderApp(path: string) {
   const router = createMemoryRouter(routes, { initialEntries: [path] });
   const utils = render(
-    <ConfigProvider>
-      <ActiveWorkoutProvider>
+    <PeopleProvider>
+      <PersonScope>
         <RouterProvider router={router} />
-      </ActiveWorkoutProvider>
-    </ConfigProvider>,
+      </PersonScope>
+    </PeopleProvider>,
   );
   return { ...utils, router };
 }

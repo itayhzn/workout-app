@@ -1,23 +1,34 @@
 import { RotateCcw } from "lucide-react";
-import { Link, Navigate, Outlet, RouterProvider, ScrollRestoration, createHashRouter, useRouteError } from "react-router-dom";
+import { useState, type ReactNode } from "react";
+import { Link, Navigate, Outlet, RouterProvider, ScrollRestoration, createHashRouter, useLocation, useRouteError } from "react-router-dom";
 import { EmptyState } from "./components/ui";
 import { ExercisesPage } from "./pages/manage/ExercisesPage";
 import { ManageHistoryPage } from "./pages/manage/HistoryPage";
 import { ManageLayout } from "./pages/manage/ManageLayout";
+import { PeoplePage } from "./pages/manage/PeoplePage";
+import { WhoAreYou } from "./pages/WhoAreYou";
 import { SchedulePage } from "./pages/manage/SchedulePage";
 import { SettingsPage } from "./pages/manage/SettingsPage";
 import { WorkoutsPage } from "./pages/manage/WorkoutsPage";
+import { PairPage } from "./pages/PairPage";
 import { ExercisePage } from "./pages/phone/ExercisePage";
 import { FinishPage } from "./pages/phone/FinishPage";
 import { IntervalPage } from "./pages/phone/IntervalPage";
 import { PhoneHistoryDetail, PhoneHistoryList } from "./pages/phone/HistoryPages";
 import { PhoneHome } from "./pages/phone/PhoneHome";
 import { WorkoutPage } from "./pages/phone/WorkoutPage";
-import { preferredMode } from "./services/settings";
+import { dbNameForPerson, preferredMode } from "./services/settings";
+import { selectDatabase } from "./storage/indexedDb";
+import { PeopleProvider, usePeople } from "./state/PeopleContext";
 import { ActiveWorkoutProvider } from "./state/ActiveWorkoutContext";
 import { ConfigProvider } from "./state/ConfigContext";
+import { SyncProvider } from "./state/SyncContext";
 
 function Root() {
+  const { connection, activePersonId } = usePeople();
+  const { pathname } = useLocation();
+  // A connected device must pick who it is before anything else (pairing links still work).
+  if (connection && !activePersonId && !pathname.startsWith("/pair")) return <WhoAreYou />;
   return (
     <>
       <ScrollRestoration />
@@ -72,6 +83,7 @@ export const routes = [
       { path: "workout/:sessionId/exercise/:sessionExerciseId", element: <ExercisePage /> },
       { path: "workout/:sessionId/intervals", element: <IntervalPage /> },
       { path: "workout/:sessionId/finish", element: <FinishPage /> },
+      { path: "pair/:code", element: <PairPage /> },
       { path: "history", element: <PhoneHistoryList /> },
       { path: "history/:sessionId", element: <PhoneHistoryDetail /> },
       {
@@ -87,6 +99,7 @@ export const routes = [
           { path: "schedule", element: <SchedulePage /> },
           { path: "history", element: <ManageHistoryPage /> },
           { path: "history/:sessionId", element: <ManageHistoryPage /> },
+          { path: "people", element: <PeoplePage /> },
           { path: "settings", element: <SettingsPage /> },
         ],
       },
@@ -97,12 +110,37 @@ export const routes = [
 
 const router = createHashRouter(routes);
 
-export function App() {
+/**
+ * Everything below is one person's data. Keyed on the person, so switching remounts it against that
+ * person's own local database, plan and sync state.
+ */
+export function PersonScope({ children }: { children: ReactNode }) {
+  const { activePersonId } = usePeople();
+  return (
+    <PersonData key={activePersonId ?? "local"} personId={activePersonId}>
+      {children}
+    </PersonData>
+  );
+}
+
+function PersonData({ personId, children }: { personId?: string; children: ReactNode }) {
+  // Point storage at this person's database before any provider below touches it.
+  useState(() => selectDatabase(dbNameForPerson(personId)));
   return (
     <ConfigProvider>
       <ActiveWorkoutProvider>
-        <RouterProvider router={router} />
+        <SyncProvider>{children}</SyncProvider>
       </ActiveWorkoutProvider>
     </ConfigProvider>
+  );
+}
+
+export function App() {
+  return (
+    <PeopleProvider>
+      <PersonScope>
+        <RouterProvider router={router} />
+      </PersonScope>
+    </PeopleProvider>
   );
 }

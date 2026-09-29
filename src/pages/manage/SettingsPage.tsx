@@ -1,23 +1,25 @@
-import { CloudUpload, Download, GitBranch, HardDrive, Link2, RotateCcw, Trash2, Upload, Volume2 } from "lucide-react";
+import { Cloud, CloudUpload, Download, GitBranch, HardDrive, Link2, RotateCcw, Trash2, Upload, Volume2 } from "lucide-react";
 import { useRef, useState, type ReactNode } from "react";
+import { Link } from "react-router-dom";
 import { Banner, ConfirmDialog, Field, Label } from "../../components/ui";
+import { SyncRow } from "../../components/SyncStatus";
 import { WeightUnitToggle } from "../../components/WeightUnitToggle";
-import { GitHubRepository, type GitHubSettings } from "../../repositories/githubRepository";
 import { exportConfigFiles } from "../../services/configService";
 import { exportHistory, importHistoryFile } from "../../services/historyService";
 import {
   clearModePreference,
   detectMode,
-  loadGitHubSettings,
   loadModePreference,
   loadTimerSound,
-  saveGitHubSettings,
   saveModePreference,
   saveTimerSound,
-  suggestedGitHubSettings,
+  suggestedConnection,
   type AppMode,
+  type Connection,
 } from "../../services/settings";
 import { useConfig } from "../../state/ConfigContext";
+import { usePeople } from "../../state/PeopleContext";
+import { useSync } from "../../state/SyncContext";
 import { PageHeader } from "./shared";
 
 type Notice = { tone: "info" | "error"; text: string } | undefined;
@@ -57,10 +59,10 @@ export function SettingsPage() {
   };
 
   const sourceText = config.localEdits
-    ? "Unpublished edits saved in this browser. They are used instead of the deployed files until you publish or discard them."
+    ? "Unpublished edits saved in this browser. They are used instead of the shared plan until you publish or discard them."
     : config.source === "github"
-      ? "Loaded live from GitHub. Saves create commits in the repository."
-      : "Loaded from the JSON files deployed with the site (read-only). Edits will be saved in this browser until you connect GitHub.";
+      ? "The active person's plan, loaded live from the shared data repository. Saves create commits there."
+      : "The starter plan deployed with the site (read-only). Edits will be saved in this browser until you connect the shared data repository.";
 
   return (
     <div className="flex max-w-3xl flex-col gap-5">
@@ -95,7 +97,9 @@ export function SettingsPage() {
 
       <GitHubSection onNotice={setNotice} />
 
-      <Section icon={<Upload size={18} />} title="Workout history" description="History is stored locally on each device. Export it from your phone and import it here to review it on this computer. Importing never creates duplicates.">
+      <SyncSection />
+
+      <Section icon={<Upload size={18} />} title="Workout history" description="With sync on, history reaches every device automatically. Export/import is a manual backup, or a way to move history without sync. Importing never creates duplicates.">
         <HistoryTransfer onNotice={setNotice} />
       </Section>
 
@@ -119,19 +123,46 @@ export function SettingsPage() {
   );
 }
 
+function SyncSection() {
+  const { configured } = useSync();
+  const { activePerson } = usePeople();
+  return (
+    <Section
+      icon={<Cloud size={18} />}
+      title="Sync"
+      description="The active person's plan, history and preferences sync through the shared data repository. Each device keeps working offline and catches up the next time it's online."
+    >
+      {configured ? (
+        <div className="flex flex-col gap-3">
+          <SyncRow />
+          <p className="text-sm text-ink-2">
+            Syncing as <strong className="text-ink">{activePerson?.name}</strong>. To set up someone's phone, go to{" "}
+            <Link to="/manage/people" className="text-volt underline">
+              People
+            </Link>{" "}
+            → Pair a phone.
+          </p>
+        </div>
+      ) : (
+        <p className="text-sm text-ink-2">Connect the shared data repository below to turn sync on.</p>
+      )}
+    </Section>
+  );
+}
+
 function GitHubSection({ onNotice }: { onNotice: (n: Notice) => void }) {
   const config = useConfig();
-  const existing = loadGitHubSettings();
-  const [form, setForm] = useState<GitHubSettings>(() => existing ?? { ...suggestedGitHubSettings(), token: "" });
+  const people = usePeople();
+  const existing = people.connection;
+  const [form, setForm] = useState<Connection>(() => existing ?? { ...suggestedConnection(), token: "" });
   const [busy, setBusy] = useState(false);
-  const set = (patch: Partial<GitHubSettings>) => setForm({ ...form, ...patch });
+  const set = (patch: Partial<Connection>) => setForm({ ...form, ...patch });
 
   const connect = async () => {
     setBusy(true);
     onNotice(undefined);
     try {
-      await new GitHubRepository(form).testConnection();
-      saveGitHubSettings(form);
+      await people.connect(form);
       await config.reconnect();
       onNotice({ tone: "info", text: `Connected to ${form.owner}/${form.repo}.` });
     } catch (e) {
@@ -141,30 +172,26 @@ function GitHubSection({ onNotice }: { onNotice: (n: Notice) => void }) {
     }
   };
 
-  const disconnect = async () => {
-    saveGitHubSettings(undefined);
+  const disconnect = () => {
+    people.disconnect();
     setForm({ ...form, token: "" });
-    await config.reconnect();
-    onNotice({ tone: "info", text: "Disconnected from GitHub. The token was removed from this browser." });
+    onNotice({ tone: "info", text: "Disconnected. The token was removed from this browser." });
   };
 
   return (
     <Section
       icon={<GitBranch size={18} />}
-      title="GitHub connection"
-      description="GitHub Pages is static, so saving configuration uses the GitHub API to commit the JSON files. Pushing to the branch redeploys the site."
+      title="Shared data repository"
+      description="A private GitHub repo holding everyone's plans, history and preferences (people/<name>/…). The site itself is static, so the app reads and writes it through the GitHub API."
     >
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid gap-4 sm:grid-cols-3">
         <Field label="Owner">{(id) => <input id={id} className="input h-10" value={form.owner} onChange={(e) => set({ owner: e.target.value.trim() })} />}</Field>
         <Field label="Repository">{(id) => <input id={id} className="input h-10" value={form.repo} onChange={(e) => set({ repo: e.target.value.trim() })} />}</Field>
         <Field label="Branch">{(id) => <input id={id} className="input h-10" value={form.branch} onChange={(e) => set({ branch: e.target.value.trim() })} />}</Field>
-        <Field label="Data folder" hint="Folder in the repo holding exercises.json, workouts.json, schedule.json.">
-          {(id) => <input id={id} className="input h-10 font-mono text-sm" value={form.dataPath} onChange={(e) => set({ dataPath: e.target.value.trim() })} />}
-        </Field>
-        <div className="sm:col-span-2">
+        <div className="sm:col-span-3">
           <Field
             label="Personal access token"
-            hint="Fine-grained token limited to this repository with Contents: Read and write. Stored only in this browser's local storage — never committed."
+            hint="Fine-grained token limited to the data repository, with Contents: Read and write. Everyone shares it. Stored only in this browser's local storage — never committed."
           >
             {(id) => (
               <input id={id} type="password" autoComplete="off" className="input h-10 font-mono text-sm" value={form.token} placeholder="github_pat_…" onChange={(e) => set({ token: e.target.value.trim() })} />
@@ -181,7 +208,7 @@ function GitHubSection({ onNotice }: { onNotice: (n: Notice) => void }) {
             Disconnect
           </button>
         )}
-        <span className="text-sm text-ink-2">{config.githubConnected ? `Connected to ${existing?.owner}/${existing?.repo}` : "Not connected"}</span>
+        <span className="text-sm text-ink-2">{existing ? `Connected to ${existing.owner}/${existing.repo}` : "Not connected"}</span>
       </div>
     </Section>
   );

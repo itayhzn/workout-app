@@ -5,7 +5,7 @@ import { GitHubRepository } from "../repositories/githubRepository";
 import { LocalConfigRepository } from "../repositories/localConfigRepository";
 import { StaticJsonRepository } from "../repositories/staticJsonRepository";
 import { getCachedConfig, putCachedConfig, type ConfigSource } from "../storage/indexedDb";
-import { loadGitHubSettings } from "./settings";
+import { getActivePersonId, loadConnection } from "./settings";
 
 export interface LoadedConfig extends Config {
   source: ConfigSource;
@@ -30,10 +30,11 @@ export async function saveAll(repo: ConfigRepository, config: Config, message: s
   await repo.saveSchedule(config.schedule, `${message}: schedule`);
 }
 
-/** The repository used for loading and (when writable) saving config on this device. */
+/** The active person's plan in the data repo when connected; otherwise the starter plan deployed with the site. */
 export function remoteRepository(): ConfigRepository {
-  const gh = loadGitHubSettings();
-  return gh ? new GitHubRepository(gh) : new StaticJsonRepository();
+  const connection = loadConnection();
+  const person = getActivePersonId();
+  return connection && person ? new GitHubRepository(connection, person) : new StaticJsonRepository();
 }
 
 /** Where saves go: GitHub if connected, otherwise this browser. */
@@ -66,15 +67,14 @@ export async function loadConfig(remote: ConfigRepository): Promise<LoadedConfig
     putCachedConfig({ ...config, savedAt: new Date().toISOString(), source, localEdits: false }).catch(() => {});
     return { ...config, source, localEdits: false };
   } catch (e) {
+    const offlineError = e instanceof Error ? e.message : String(e);
     if (cached) {
-      return {
-        exercises: cached.exercises,
-        workouts: cached.workouts,
-        schedule: cached.schedule,
-        source: cached.source,
-        localEdits: false,
-        offlineError: e instanceof Error ? e.message : String(e),
-      };
+      return { exercises: cached.exercises, workouts: cached.workouts, schedule: cached.schedule, source: cached.source, localEdits: false, offlineError };
+    }
+    // A bad or expired GitHub token must never leave the app without a plan: use the deployed copy.
+    if (remote.kind === "github") {
+      const config = await loadAll(new StaticJsonRepository());
+      return { ...config, source: "static", localEdits: false, offlineError };
     }
     throw e;
   }
@@ -86,10 +86,12 @@ export async function updateCache(config: Config, source: ConfigSource, localEdi
 
 /** Pushes browser-only edits to GitHub. Loads first so every write carries the current SHA. */
 export async function publishLocalEdits(config: Config): Promise<void> {
-  const gh = loadGitHubSettings();
-  if (!gh) throw new ReadOnlyError();
-  const repo = new GitHubRepository(gh);
-  await loadAll(repo);
+  const connection = loadConnection();
+  const person = getActivePersonId();
+  if (!connection || !person) throw new ReadOnlyError();
+  const repo = new GitHubRepository(connection, person);
+  // Read first so each write carries the current SHA (a missing plan is simply created).
+  await loadAll(repo).catch(() => {});
   await saveAll(repo, config, "Publish local edits");
   await updateCache(config, "github", false);
 }
