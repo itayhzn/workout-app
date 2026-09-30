@@ -3,7 +3,7 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { ExerciseImage } from "../../components/ExerciseImage";
 import { Banner, ConfirmDialog, Label, Modal, ProgressBar } from "../../components/ui";
-import { formatClock, formatNumber, formatSeconds, formatTarget, formatWeight, formatWeightValue } from "../../domain/format";
+import { formatClock, formatNumber, formatSeconds, formatTarget, formatWeight, formatWeightValue, sessionDurationMs } from "../../domain/format";
 import { GroupLabel } from "../../components/GroupLabel";
 import { LeaveByChip } from "../../components/LeaveByChip";
 import { groupRuns } from "../../domain/groups";
@@ -60,7 +60,7 @@ function WorkoutOverview({ session }: { session: WorkoutSession }) {
           <span className="truncate">{session.workoutName}</span>
         </h1>
         <div className="flex shrink-0 items-center gap-1.5 rounded bg-elevated px-3 py-2 font-display text-lg font-bold tnum">
-          <Timer size={18} className="text-ink-2" /> {formatClock((now - Date.parse(session.startedAt)) / 1000)}
+          <Timer size={18} className="text-ink-2" /> {formatClock(sessionDurationMs(session, now) / 1000)}
         </div>
       </div>
 

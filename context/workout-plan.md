@@ -134,6 +134,46 @@ standing forward fold 60s · seated hamstring 2×45s (L/R) · butterfly 60s · l
 
 ---
 
+## Home alternatives for a missed gym morning (added 2026-09-30)
+
+If you miss a morning gym session, do the matching home workout in a ~30-minute window at home (son in the crib next to you), **in addition to** that day's floor session. Missed Push A or B → **Home Push**, and so on. They're in your plan but not on the schedule; start one from **Choose another workout** on the home screen. The morning's cardio isn't replaced.
+
+**Equipment:** bodyweight, yoga mat, a knee-high box, a sturdy table, and one adjustable dumbbell (1.25 kg bar + four 2.5 kg plates, so 3.75 / 6.25 / 8.75 / 11.25 kg).
+
+**Making light weights work:**
+- **Harder positions:** feet on the box, one arm or one leg at a time.
+- **Slow lowering:** about 3 seconds down on every rep.
+- **Higher reps:** take each set to 1–2 reps short of failure.
+
+No jumping and nothing overhead near the crib. Tighten the plate collars.
+
+**Every session** starts with a 3-min hands-free warm-up: arm circles · cat-cow · hip circles · world's greatest stretch (L/R) · bodyweight squats.
+
+### Home Push (~27 min)
+| Exercise | Sets × reps | Start | Rest |
+|---|---|---|---|
+| Decline push-ups (feet on the box) | 3 × 8–20 | BW | 1:00 |
+| **SS** Pike push-ups + Box dips | 3 × 6–12 / 10–20 | BW | 1:15 after the pair |
+| **SS** One-arm lateral raise (per arm) + Overhead triceps extension (both hands) | 2 × 12–15 / 10–15 | 6.25 / 11.25 | 0:45 after the pair |
+
+### Home Pull (~29 min)
+| Exercise | Sets × reps | Start | Rest |
+|---|---|---|---|
+| Inverted table row (fallback: towel wedged in a door) | 3 × 8–15 | BW | 1:00 |
+| **SS** One-arm dumbbell row (hand on the box, per arm) + Reverse snow angels | 3 × 12–15 / 10–12 | 11.25 / BW | 1:00 after the pair |
+| **SS** Goblet curl + Prone Y-T-W raises (8 of each letter) | 3 × 10–15 / 8 | 11.25 / BW | 0:45 after the pair |
+
+### Home Legs (~30 min)
+| Exercise | Sets × reps | Start | Rest |
+|---|---|---|---|
+| Bulgarian split squat (rear foot on the box, goblet, per leg) | 3 × 10–15 | 11.25 | 1:00 |
+| Single-leg hip thrust (shoulders on the box, per leg) | 3 × 12–15 | BW | 0:45 |
+| **SS** Single-leg Romanian deadlift (per leg) + Box calf raise | 3 × 10–12 / 15–25 | 11.25 | 0:45 after the pair |
+
+**Shared exercises:** the one-arm dumbbell row and Bulgarian split squat are the same exercises as in the gym, so "last time" and the add-weight hint carry over between gym and home. The weights differ, so check the target before logging. If the top of a rep range gets easy, slow the lowering further, pause at the hardest point, or move to a harder position (e.g. one-leg calf raises).
+
+---
+
 ## Posture Reset (daily, 5 min, added 2026-09-30)
 
 Your copy of the plan (`people/itay/plan/`) also has a daily **Posture Reset**, a third short session every day of the week. It's hands-free and needs no equipment: chin tucks 40s · wall angels 45s · chair thoracic extension 45s · floor Y-raises 40s · shoulder blade squeezes 40s · doorway chest stretch 2×30s. The details are in [`workout-plan-gal.md`](workout-plan-gal.md#posture-reset-daily-5-min-no-equipment), since Gal does the same routine. The starter plan in `public/data/` doesn't include it.

@@ -1,4 +1,5 @@
 import { openDB, type DBSchema, type IDBPDatabase } from "idb";
+import { isNewerSession } from "../domain/session";
 import type { Config, IntervalTimerState, RestTimerState, WorkoutSession } from "../domain/types";
 
 export type ConfigSource = "static" | "github" | "local";
@@ -140,22 +141,43 @@ export async function getSession(id: string): Promise<WorkoutSession | undefined
   return (await db()).get("workoutSessions", id);
 }
 
-/** Idempotent merge by session ID: existing sessions are never duplicated or overwritten. */
-export async function importSessions(sessions: WorkoutSession[]): Promise<{ added: number; skipped: number }> {
+/**
+ * Idempotent merge by session ID: never duplicates. An existing session is replaced only by a newer
+ * version of itself (resumed and finished again elsewhere); same or older copies are skipped.
+ */
+export async function importSessions(sessions: WorkoutSession[]): Promise<{ added: number; updated: number; skipped: number }> {
   const database = await db();
   const tx = database.transaction("workoutSessions", "readwrite");
   let added = 0;
+  let updated = 0;
   let skipped = 0;
   for (const s of sessions) {
-    if (await tx.store.get(s.id)) {
+    const existing = await tx.store.get(s.id);
+    if (existing && !isNewerSession(s, existing)) {
       skipped++;
       continue;
     }
     await tx.store.put(s);
-    added++;
+    if (existing) updated++;
+    else added++;
   }
   await tx.done;
-  return { added, skipped };
+  return { added, updated, skipped };
+}
+
+/**
+ * Moves a finished session back to being the active workout (resume later). Atomic: history entry
+ * removed and active session set together; any leftover timers are cleared.
+ */
+export async function reopenCompletedSession(session: WorkoutSession): Promise<void> {
+  const database = await db();
+  const tx = database.transaction(["workoutSessions", "activeWorkout"], "readwrite");
+  await Promise.all([
+    tx.objectStore("workoutSessions").delete(session.id),
+    tx.objectStore("activeWorkout").clear(),
+    tx.objectStore("activeWorkout").put(session, "session"),
+    tx.done,
+  ]);
 }
 
 // --- app state --------------------------------------------------------------

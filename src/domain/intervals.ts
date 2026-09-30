@@ -103,6 +103,52 @@ export function skipIntervalStep(state: IntervalTimerState, now: number = Date.n
   };
 }
 
+/** Within this long into a step, Back goes to the previous step instead of restarting the current one. */
+export const REWIND_GRACE_MS = 3000;
+
+export interface RewindResult {
+  state: IntervalTimerState;
+  /** Work steps that had already been recorded (completed or skipped) and must be reopened in the session. */
+  reopened: IntervalStep[];
+}
+
+/**
+ * Back, music-player style: restart the current work step, or (in its first few seconds, or during a
+ * rest/get-ready) jump to the start of the previous work step. Anything already recorded from the target
+ * onwards is reported so its sets can be reopened.
+ */
+export function rewindIntervalStep(state: IntervalTimerState, now: number = Date.now()): RewindResult {
+  const elapsed = elapsedMs(state, now);
+  const starts: number[] = [];
+  let t = 0;
+  for (const s of state.steps) {
+    starts.push(t);
+    t += s.durationSeconds * 1000;
+  }
+  const pos = intervalPosition(state, now);
+  const current = Math.min(pos.index, state.steps.length - 1);
+  const into = elapsed - starts[current];
+  let target: number;
+  if (!pos.finished && state.steps[current].phase === "work" && into > REWIND_GRACE_MS) {
+    target = current;
+  } else {
+    const before = pos.finished ? state.steps.length : state.steps[current].phase === "work" ? current : current + 1;
+    target = 0;
+    for (let i = before - 1; i >= 0; i--) {
+      if (state.steps[i].phase === "work") {
+        target = i;
+        break;
+      }
+    }
+  }
+  const reopened = state.steps.filter((s, i) => i >= target && s.phase === "work" && starts[i] + s.durationSeconds * 1000 <= elapsed);
+  const anchor = state.pausedAt ?? now;
+  return {
+    state: { ...state, startedAt: anchor - starts[target], skippedSteps: state.skippedSteps.filter((i) => i < target) },
+    reopened,
+  };
+}
+
 /** Adds (or removes) time from the current step. */
 export function extendIntervalStep(state: IntervalTimerState, seconds: number, now: number = Date.now()): IntervalTimerState {
   const pos = intervalPosition(state, now);

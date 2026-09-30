@@ -1,3 +1,4 @@
+import { isNewerSession } from "../domain/session";
 import type { WorkoutSession } from "../domain/types";
 import type { WeightUnit } from "../domain/units";
 import { ConflictError } from "../repositories/configRepository";
@@ -7,6 +8,7 @@ import { getWeightUnit, setWeightUnit } from "../state/units";
 import { notifyHistoryChanged } from "../state/history";
 import {
   enqueueAllSessions,
+  getActiveSession,
   getAppState,
   getSession,
   importSessions,
@@ -27,9 +29,18 @@ const prefsFile = (personId: string) => `${personDir(personId)}/preferences.json
 const STATE_KEY = "syncState";
 const MAX_ATTEMPTS = 3;
 
+/**
+ * Bump when the meaning of synced data changes, so every device re-reads history once after updating.
+ * v2: sessions can change (resumed and finished again). Older versions skipped newer copies of sessions
+ * they already had, while still recording the month as seen.
+ */
+export const SYNC_STATE_VERSION = 2;
+
 export interface SyncState {
   /** Last seen SHA per month file, so unchanged months aren't downloaded again. */
   monthShas: Record<string, string>;
+  /** SYNC_STATE_VERSION this state was written by (absent = 1). */
+  version?: number;
   lastSyncAt?: string;
   /** Set once this device has queued its pre-existing history for upload. */
   initialUploadDone?: boolean;
@@ -53,12 +64,16 @@ export function monthOf(s: WorkoutSession): string {
   return (s.completedAt ?? s.startedAt).slice(0, 7);
 }
 
-/** Union by id (existing copies win — sessions never change), sorted by completion time. */
+/**
+ * Union by id, sorted by completion time. A session only changes by being resumed and finished again,
+ * so for the same id the newer copy (later completedAt) wins. `added` counts new and updated sessions.
+ */
 export function mergeSessions(base: WorkoutSession[], extra: WorkoutSession[]): { merged: WorkoutSession[]; added: number } {
   const byId = new Map(base.map((s) => [s.id, s]));
   let added = 0;
   for (const s of extra) {
-    if (byId.has(s.id)) continue;
+    const existing = byId.get(s.id);
+    if (existing && !isNewerSession(s, existing)) continue;
     byId.set(s.id, s);
     added++;
   }
@@ -81,15 +96,22 @@ async function readMonth(client: GitHubContents, personId: string, month: string
 }
 
 /** Uploads local sessions for one month, merging with whatever other devices already wrote. */
-async function pushMonth(client: GitHubContents, personId: string, month: string, local: WorkoutSession[], state: SyncState): Promise<number> {
+async function pushMonth(
+  client: GitHubContents,
+  personId: string,
+  month: string,
+  local: WorkoutSession[],
+  state: SyncState,
+  activeId: string | undefined,
+): Promise<number> {
   for (let attempt = 1; ; attempt++) {
     const remote = await readMonth(client, personId, month);
     // Remote sessions from other devices come along for free.
-    const imported = await importSessions(remote.sessions);
+    const imported = await importSessions(remote.sessions.filter((s) => s.id !== activeId));
     const { merged, added } = mergeSessions(remote.sessions, local);
     if (added === 0) {
       if (remote.sha) state.monthShas[month] = remote.sha;
-      return imported.added;
+      return imported.added + imported.updated;
     }
     try {
       const sha = await client.writeJson(
@@ -99,7 +121,7 @@ async function pushMonth(client: GitHubContents, personId: string, month: string
         `Sync ${added} workout${added === 1 ? "" : "s"} (${personId}, ${month})`,
       );
       if (sha) state.monthShas[month] = sha;
-      return imported.added;
+      return imported.added + imported.updated;
     } catch (e) {
       // Another device wrote this month in between: re-read, re-merge, retry.
       if (!(e instanceof ConflictError) || attempt >= MAX_ATTEMPTS) throw e;
@@ -137,11 +159,21 @@ async function syncPrefs(client: GitHubContents, personId: string): Promise<Sync
  */
 export async function runSync(client: GitHubContents, personId: string): Promise<SyncResult> {
   const state = await loadSyncState();
+  if ((state.version ?? 1) < SYNC_STATE_VERSION) {
+    // Forget which months were seen, so all of them are downloaded again once. Safe: imports never
+    // duplicate and only a newer copy of a session replaces an older one.
+    state.monthShas = {};
+    state.version = SYNC_STATE_VERSION;
+    await setAppState(STATE_KEY, state);
+  }
   if (!state.initialUploadDone) {
     await enqueueAllSessions();
     state.initialUploadDone = true;
     await setAppState(STATE_KEY, state);
   }
+
+  // A resumed session is active again: don't pull its old finished copy back into history.
+  const activeId = (await getActiveSession())?.id;
 
   // 1. Push
   let pushed = 0;
@@ -159,7 +191,7 @@ export async function runSync(client: GitHubContents, personId: string): Promise
   }
   if (missing.length) await removeFromSyncQueue(missing);
   for (const [month, sessions] of byMonth) {
-    pulled += await pushMonth(client, personId, month, sessions, state);
+    pulled += await pushMonth(client, personId, month, sessions, state, activeId);
     await removeFromSyncQueue(sessions.map((s) => s.id));
     pushed += sessions.length;
     await setAppState(STATE_KEY, state);
@@ -170,7 +202,8 @@ export async function runSync(client: GitHubContents, personId: string): Promise
     const m = entry.name.match(/^(\d{4}-\d{2})\.json$/);
     if (!m || state.monthShas[m[1]] === entry.sha) continue;
     const remote = await readMonth(client, personId, m[1]);
-    pulled += (await importSessions(remote.sessions)).added;
+    const imported = await importSessions(remote.sessions.filter((s) => s.id !== activeId));
+    pulled += imported.added + imported.updated;
     if (remote.sha) state.monthShas[m[1]] = remote.sha;
   }
 
