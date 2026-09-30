@@ -1,4 +1,4 @@
-import { ArrowRight, CircleCheck, Pause, Play, Plus, SkipForward, Square } from "lucide-react";
+import { ArrowRight, CircleCheck, Pause, Play, Plus, SkipBack, SkipForward, Square } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { ExerciseImage } from "../../components/ExerciseImage";
 import { Label, ProgressBar } from "../../components/ui";
@@ -82,7 +82,7 @@ function Ring({ fraction, className }: { fraction: number; className: string }) 
 }
 
 function IntervalRunner({ session, timer }: { session: WorkoutSession; timer: IntervalTimerState }) {
-  const { pauseIntervals, resumeIntervals, skipInterval, extendInterval, stopIntervals } = useActiveWorkout();
+  const { pauseIntervals, resumeIntervals, skipInterval, backInterval, extendInterval, stopIntervals } = useActiveWorkout();
   const { exerciseById } = useConfig();
   const navigate = useNavigate();
   const now = useNow(200, !timer.pausedAt);
@@ -112,8 +112,16 @@ function IntervalRunner({ session, timer }: { session: WorkoutSession; timer: In
   return (
     <PhoneScreen
       footer={
-        <div className="grid grid-cols-[auto_1fr_auto] items-center gap-3">
-          <button className="btn-secondary h-14 w-16 normal-case" onClick={() => extendInterval(10)} aria-label="Add 10 seconds">
+        <div className="grid grid-cols-[auto_auto_1fr_auto] items-center gap-2">
+          <button
+            className="btn-secondary h-14 w-14"
+            onClick={backInterval}
+            aria-label="Back: restart this step, or go to the previous set"
+            title="Back — restart this set, or tap within 3 s to go to the previous one"
+          >
+            <SkipBack size={20} />
+          </button>
+          <button className="btn-secondary h-14 w-14 normal-case" onClick={() => extendInterval(10)} aria-label="Add 10 seconds">
             <Plus size={16} />
             10s
           </button>
@@ -127,7 +135,7 @@ function IntervalRunner({ session, timer }: { session: WorkoutSession; timer: In
           >
             {paused ? <Play size={22} /> : <Pause size={22} />} {paused ? "Resume" : "Pause"}
           </button>
-          <button className="btn-secondary h-14 w-16" onClick={skipInterval} aria-label={step.phase === "work" ? "Skip this set" : "Skip rest"}>
+          <button className="btn-secondary h-14 w-14" onClick={skipInterval} aria-label={step.phase === "work" ? "Skip this set" : "Skip rest"}>
             <SkipForward size={20} />
           </button>
         </div>

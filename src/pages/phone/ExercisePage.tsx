@@ -546,12 +546,24 @@ function SetRow({ set, isCurrent, previous, editing, onEdit, onChange, onUncompl
           )}
         </span>
       </button>
-      {editing && <SetEditor set={set} onSave={(p) => { onChange(p); onClose(); }} onCancel={onClose} onUncomplete={completed ? onUncomplete : undefined} />}
+      {editing && <SetEditor set={set} onSave={(p) => { onChange(p); onClose(); }} onCancel={onClose} onUncomplete={set.status !== "pending" ? onUncomplete : undefined} reopenLabel={set.status === "skipped" ? "Un-skip" : "Not done"} />}
     </div>
   );
 }
 
-function SetEditor({ set, onSave, onCancel, onUncomplete }: { set: StrengthSetResult; onSave: (p: { weightKg: number | null; reps: number | null }) => void; onCancel: () => void; onUncomplete?: () => void }) {
+function SetEditor({
+  set,
+  onSave,
+  onCancel,
+  onUncomplete,
+  reopenLabel = "Not done",
+}: {
+  set: StrengthSetResult;
+  onSave: (p: { weightKg: number | null; reps: number | null }) => void;
+  onCancel: () => void;
+  onUncomplete?: () => void;
+  reopenLabel?: string;
+}) {
   const [weight, setWeight] = useState(set.weightKg);
   const [reps, setReps] = useState(set.reps);
   const unit = useWeightUnit();
@@ -570,7 +582,7 @@ function SetEditor({ set, onSave, onCancel, onUncomplete }: { set: StrengthSetRe
       <div className="flex gap-2">
         {onUncomplete && (
           <button className="btn-ghost h-11 px-3 normal-case" onClick={onUncomplete}>
-            <Undo2 size={16} /> Not done
+            <Undo2 size={16} /> {reopenLabel}
           </button>
         )}
         <div className="flex-1" />
@@ -694,7 +706,7 @@ function TimedExercise({ session, ex, previous }: { session: WorkoutSession; ex:
           {ex.sets.map((set) => (
             <li key={set.setNumber}>
               <TimedSetRow set={set} ex={ex} isCurrent={set === current && ex.status !== "skipped"} onToggle={() =>
-                update((s) => (set.status === "completed" ? uncompleteSet(s, ex.id, set.setNumber) : completeTimedSet(s, ex.id, { setNumber: set.setNumber })))
+                update((s) => (set.status !== "pending" ? uncompleteSet(s, ex.id, set.setNumber) : completeTimedSet(s, ex.id, { setNumber: set.setNumber })))
               } />
             </li>
           ))}
@@ -716,8 +728,7 @@ function TimedSetRow({ set, ex, isCurrent, onToggle }: { set: TimedSetResult; ex
         isCurrent ? "border-[1.5px] border-volt bg-elevated" : completed ? "border-line bg-canvas" : "border-line bg-card"
       } ${skipped ? "opacity-50" : ""}`}
       onClick={onToggle}
-      disabled={skipped}
-      aria-label={`Set ${set.setNumber}, ${set.status}. Tap to ${completed ? "undo" : "mark done"}.`}
+      aria-label={`Set ${set.setNumber}, ${set.status}. Tap to ${completed ? "undo" : skipped ? "un-skip" : "mark done"}.`}
     >
       <span className={`font-display text-xl font-bold tnum ${isCurrent ? "text-volt" : "text-ink-3"}`}>{String(set.setNumber).padStart(2, "0")}</span>
       <span className={`font-display text-lg font-bold tnum ${completed ? "text-ink-2" : isCurrent ? "" : "text-ink-3"}`}>

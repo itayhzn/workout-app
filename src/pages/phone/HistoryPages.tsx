@@ -1,7 +1,10 @@
-import { CircleCheck } from "lucide-react";
-import { Link, useParams, useSearchParams } from "react-router-dom";
+import { CircleCheck, RotateCcw } from "lucide-react";
+import { useState } from "react";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { SessionDetail } from "../../components/SessionDetail";
-import { EmptyState, Spinner } from "../../components/ui";
+import { Banner, EmptyState, Spinner } from "../../components/ui";
+import { hasUnfinishedWork, unfinishedCount } from "../../domain/session";
+import { useActiveWorkout } from "../../state/ActiveWorkoutContext";
 import { useSession, useSessions } from "../../state/history";
 import { PhoneHeader, PhoneScreen } from "./PhoneLayout";
 import { SessionRow } from "./PhoneHome";
@@ -28,21 +31,62 @@ export function PhoneHistoryList() {
   );
 }
 
+/** Picks a cut-short workout back up: it becomes the active workout with its skipped work reopened. */
+function ResumeButton({ sessionId, unfinished, primary }: { sessionId: string; unfinished: number; primary: boolean }) {
+  const { session: active, resumeSession } = useActiveWorkout();
+  const navigate = useNavigate();
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string>();
+  if (active) {
+    return (
+      <Banner action={<Link to={`/workout/${active.id}`} className="btn-ghost h-8 px-2 text-xs">Open</Link>}>
+        To resume this workout, finish or discard {active.workoutName} first.
+      </Banner>
+    );
+  }
+  return (
+    <>
+      {error && <Banner tone="error">{error}</Banner>}
+      <button
+        className={`${primary ? "btn-primary" : "btn-secondary"} h-14 w-full text-base`}
+        disabled={busy}
+        onClick={async () => {
+          setBusy(true);
+          setError(undefined);
+          try {
+            await resumeSession(sessionId);
+            navigate(`/workout/${sessionId}`, { replace: true });
+          } catch (e) {
+            setError(e instanceof Error ? e.message : String(e));
+            setBusy(false);
+          }
+        }}
+      >
+        <RotateCcw size={18} /> Resume workout · {unfinished} unfinished
+      </button>
+    </>
+  );
+}
+
 export function PhoneHistoryDetail() {
   const { sessionId } = useParams();
   const [params] = useSearchParams();
   const justFinished = params.get("done") === "1";
   const { session, loading } = useSession(sessionId);
-  return (
-    <PhoneScreen
-      footer={
-        justFinished && session ? (
+  const resumable = !!session && session.status === "completed" && hasUnfinishedWork(session);
+  const footer =
+    session && (justFinished || resumable) ? (
+      <>
+        {resumable && <ResumeButton sessionId={session.id} unfinished={unfinishedCount(session)} primary={!justFinished} />}
+        {justFinished && (
           <Link to="/" replace className="btn-primary h-14 w-full text-base">
             Done
           </Link>
-        ) : undefined
-      }
-    >
+        )}
+      </>
+    ) : undefined;
+  return (
+    <PhoneScreen footer={footer}>
       <PhoneHeader title={justFinished ? "Summary" : "Workout"} back={justFinished ? "/" : "/history"} />
       {loading ? (
         <Spinner />

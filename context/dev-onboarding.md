@@ -163,7 +163,7 @@ When you change the schema, increase `DB_VERSION` and handle the migration in `u
 ### 6.4 Cross-device sync (`services/syncService.ts`, `state/SyncContext.tsx`)
 The active person's history and preferences sync through the data repo. The layout is described in that repo's README:
 
-- `people/<id>/history/YYYY-MM.json`: completed sessions, one file per UTC month of `completedAt`. Sessions are immutable, so files are merged by `id`; nothing is ever overwritten or deleted.
+- `people/<id>/history/YYYY-MM.json`: completed sessions, one file per UTC month of `completedAt`. Files are merged by `id` and nothing is ever deleted. A session only changes by being **resumed and finished again**, which moves its `completedAt` later, so for the same id the copy with the later `completedAt` wins (`isNewerSession`, used by both `mergeSessions` and `importSessions`). While a session is resumed (active), sync never pulls its old finished copy back into history.
 - `people/<id>/preferences.json`: `weightUnit`, `timerSound`, `updatedAt`. The newest write wins.
 
 `runSync` does four things in order:
@@ -171,6 +171,8 @@ The active person's history and preferences sync through the data repo. The layo
 2. **Push** the queue month by month: read, import remote sessions, merge, write with the SHA, and on a conflict re-read and retry.
 3. **Pull** only month files whose SHA changed since last time.
 4. Reconcile preferences.
+
+**When the meaning of synced data changes, bump `SYNC_STATE_VERSION`** (`services/syncService.ts`). On the next sync, each device forgets which month files it has seen and re-reads all history once, so it picks up anything an older version skipped. Example: v2 made sessions changeable (resume).
 
 `SyncProvider` runs it on start, on `requestSync()` (called after a finished workout and after a history import), when the device comes back online, and when the app returns to the foreground (throttled to every 2 minutes). Only one sync runs at a time.
 
@@ -199,8 +201,10 @@ The active person's history and preferences sync through the data repo. The layo
 - **Interval timer** (`domain/intervals.ts`):
   - `buildIntervalPlan` turns the run of consecutive `timed` exercises, starting from the chosen one, into steps. Only pending sets are included: `prep` (5s) → `work` → `rest` (the finished exercise's `restSeconds`) → … There's no rest after the final work step. Circuits (grouped timed items) are ordered round-robin, and starting from any member starts the whole circuit.
   - The position comes from `(pausedAt ?? now) - startedAt`. Pause moves `pausedAt`; resume shifts `startedAt` forward. Skip moves `startedAt` back by the time left in the current step, and skipping a *work* step records that set as `skipped`. Extend moves `startedAt` forward.
+  - **Back** (`rewindIntervalStep`) works like a music player: more than 3s into a work step, it restarts that step; otherwise (early in a step, during a rest or get-ready) it jumps to the start of the previous work step. It returns the work steps that were already recorded from that point on, and the provider reopens their sets (`uncompleteSet`, which also un-skips the exercise) so they're recorded again when they run.
   - A **global ticker** in the provider (every 200ms) calls `applyIntervalProgress` to record finished work steps as completed sets, including steps that ended while the screen was off. It plays cues only when it sees a step change live, and clears the timer when the sequence ends. It also holds a **screen wake lock** while running.
 - **Audio on iOS.** `primeAudio()` must be called from a user tap (Complete Set, Start intervals, Pause/Resume) or later beeps are blocked.
+- **Resuming a finished workout.** The phone history detail offers **Resume workout** when a finished session has skipped work (`hasUnfinishedWork`). `reopenSession` makes it active again with skipped sets and exercises reopened, and adds the time since it finished to `pausedMs`. `sessionDurationMs` subtracts `pausedMs`, so the break doesn't count as workout time. `reopenCompletedSession` moves it from history back to the active slot in one transaction. Resuming is refused while another workout is in progress.
 - **Route guard.** `SessionGuard` checks `/workout/:sessionId` routes. If the session was already finished it redirects to `/history/:id`; otherwise it shows "Workout not found".
 
 ---

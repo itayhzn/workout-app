@@ -21,7 +21,7 @@ Family and friends share one **private** data repo (e.g. `workout-data`). Each p
 3. Add people on the **People** page. Each starts from the starter plan, a copy of someone's plan, or an empty plan.
 4. To set up someone's phone, go to **People → Pair phone** next to their name and scan the QR code. For an iPhone home-screen app, use **Copy setup code** and paste it in the app's ⚙ settings.
 
-Each device keeps working offline and catches up when it's next online. History is merged by session and never overwritten.
+Each device keeps working offline and catches up when it's next online. History is merged by session and never deleted. A workout that was cut short can be resumed later, and its newer version replaces the old one on every device.
 
 ### Units
 

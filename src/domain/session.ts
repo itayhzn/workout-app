@@ -206,7 +206,10 @@ export function updateSet(
   }));
 }
 
-/** Reverts a completed set back to pending (e.g. tapped by mistake). */
+/**
+ * Reopens a completed or skipped set (tapped by mistake, skipped by a toddler, rewound in the interval timer).
+ * Reopening a set also un-skips its exercise.
+ */
 export function uncompleteSet(session: WorkoutSession, exerciseId: string, setNumber: number): WorkoutSession {
   return mapExercise(session, exerciseId, (ex) => {
     if (!isSetBased(ex)) throw new Error("Not a set-based exercise");
@@ -216,9 +219,49 @@ export function uncompleteSet(session: WorkoutSession, exerciseId: string, setNu
       if ("durationSeconds" in rest) delete rest.durationSeconds;
       return { ...rest, status: "pending" as const };
     });
-    const updated = { ...ex, sets } as SetBasedSessionExercise;
+    const updated = { ...ex, sets, status: "pending" } as SetBasedSessionExercise;
     return { ...updated, status: deriveSetStatus(updated) };
   });
+}
+
+/**
+ * Sessions are only ever changed by being resumed and finished again, which moves completedAt later.
+ * So when two copies of the same session meet (devices, sync), the later completedAt is the newer one.
+ */
+export function isNewerSession(a: WorkoutSession, b: WorkoutSession): boolean {
+  return (a.completedAt ?? "") > (b.completedAt ?? "");
+}
+
+/** True when a finished session still has skipped work that could be picked up again. */
+export function hasUnfinishedWork(session: WorkoutSession): boolean {
+  return session.exercises.some((ex) => ex.status === "skipped" || (isSetBased(ex) && ex.sets.some((s) => s.status === "skipped")));
+}
+
+export function unfinishedCount(session: WorkoutSession): number {
+  return session.exercises.filter((ex) => ex.status === "skipped" || (isSetBased(ex) && ex.sets.some((s) => s.status === "skipped"))).length;
+}
+
+/**
+ * Turns a finished session back into an active one so the rest can be done later: skipped sets and
+ * exercises reopen, and the time spent finished is excluded from the workout's duration.
+ */
+export function reopenSession(session: WorkoutSession, now: Date = new Date()): WorkoutSession {
+  const { completedAt, ...rest } = session;
+  const gap = completedAt ? Math.max(0, now.getTime() - Date.parse(completedAt)) : 0;
+  return {
+    ...rest,
+    status: "active",
+    pausedMs: (session.pausedMs ?? 0) + gap,
+    exercises: session.exercises.map((ex): SessionExercise => {
+      if (isSetBased(ex)) {
+        const sets = (ex.sets as (StrengthSetResult | TimedSetResult)[]).map((s) => (s.status === "skipped" ? { ...s, status: "pending" as const } : s));
+        const updated = { ...ex, sets, status: "pending" } as SetBasedSessionExercise;
+        return { ...updated, status: deriveSetStatus(updated) };
+      }
+      if (ex.status !== "skipped") return ex;
+      return { ...ex, status: hasActivityData(ex) ? "in_progress" : "pending" };
+    }),
+  };
 }
 
 /** Records a timed set (from the interval timer or a manual tap). Completes the next pending set by default. */

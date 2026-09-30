@@ -203,6 +203,8 @@ export interface WorkoutSession {
   notes?: string;
   /** Absolute deadline derived from Workout.leaveBy on the day the session started. */
   leaveByAt?: string;
+  /** Time spent finished before being resumed (e.g. cut short in the morning, completed later). Not counted as workout time. */
+  pausedMs?: number;
 }
 
 export interface RestTimerState {

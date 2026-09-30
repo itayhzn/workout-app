@@ -11,6 +11,7 @@ import {
   listSyncQueue,
   putActiveSession,
   putRestTimer,
+  reopenCompletedSession,
   resetDbForTests,
 } from "../indexedDb";
 
@@ -53,10 +54,28 @@ describe("history", () => {
 
   it("imports idempotently by session id", async () => {
     const s = finishSession(createSession(pull, exercises));
-    expect(await importSessions([s])).toEqual({ added: 1, skipped: 0 });
-    expect(await importSessions([s, { ...s, workoutName: "tampered" }])).toEqual({ added: 0, skipped: 2 });
+    expect(await importSessions([s])).toEqual({ added: 1, updated: 0, skipped: 0 });
+    expect(await importSessions([s, { ...s, workoutName: "tampered" }])).toEqual({ added: 0, updated: 0, skipped: 2 });
     const all = await listSessions();
     expect(all).toHaveLength(1);
     expect(all[0].workoutName).toBe("Pull");
+  });
+
+  it("replaces a session only with a newer version of itself (resumed and finished again)", async () => {
+    const s = finishSession(createSession(pull, exercises, new Date("2026-09-30T05:00:00Z")), new Date("2026-09-30T05:20:00Z"));
+    await importSessions([s]);
+    const later = { ...s, completedAt: "2026-09-30T18:00:00.000Z", notes: "finished the rest" };
+    expect(await importSessions([later])).toEqual({ added: 0, updated: 1, skipped: 0 });
+    expect(await importSessions([s])).toEqual({ added: 0, updated: 0, skipped: 1 }); // older copy never wins
+    expect((await listSessions())[0].notes).toBe("finished the rest");
+  });
+
+  it("moves a finished session back to active when resumed", async () => {
+    const s = finishSession(createSession(pull, exercises));
+    await commitCompletedSession(s);
+    const reopened = { ...s, status: "active" as const, completedAt: undefined };
+    await reopenCompletedSession(reopened);
+    expect(await listSessions()).toEqual([]);
+    expect((await getActiveSession())?.id).toBe(s.id);
   });
 });

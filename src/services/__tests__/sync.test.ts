@@ -2,14 +2,14 @@ import { describe, expect, it } from "vitest";
 import { GitHubContents } from "../../repositories/githubContents";
 import { createSession, finishSession } from "../../domain/session";
 import type { WorkoutSession } from "../../domain/types";
-import { commitCompletedSession, getAppState, importSessions, listSessions, listSyncQueue } from "../../storage/indexedDb";
+import { commitCompletedSession, getAppState, importSessions, listSessions, listSyncQueue, reopenCompletedSession, setAppState } from "../../storage/indexedDb";
 import { getWeightUnit, setWeightUnit } from "../../state/units";
 import { FakeGitHub } from "../../test/fakeGitHub";
 import { exercises, pull, run } from "../../test/fixtures";
 import { useFreshDb } from "../../test/freshDb";
 import { decodeSetupCode, encodeSetupCode } from "../pairing";
 import { loadTimerSound, markPrefsChanged } from "../settings";
-import { mergeSessions, monthOf, runSync } from "../syncService";
+import { SYNC_STATE_VERSION, mergeSessions, monthOf, runSync } from "../syncService";
 
 useFreshDb();
 
@@ -75,6 +75,42 @@ describe("runSync", () => {
     expect(ids(gh.json("people/me/history/2026-09.json"))).toEqual(ids([mine, theirs]));
     expect(ids(await listSessions())).toEqual(ids([mine, theirs]));
     expect(await listSyncQueue()).toEqual([]);
+  });
+
+  it("a resumed and re-finished workout replaces the older copy everywhere", async () => {
+    const gh = new FakeGitHub();
+    await runSync(clientFor(gh), "me");
+    const first = session("2026-09-30T05:20:00Z");
+    await commitCompletedSession(first);
+    await runSync(clientFor(gh), "me");
+    // Resumed later: while active, sync must not pull the old copy back into history.
+    await reopenCompletedSession({ ...first, status: "active", completedAt: undefined });
+    gh.put("people/me/history/2026-09.json", [first]); // month file changed (e.g. another device synced)
+    await runSync(clientFor(gh), "me");
+    expect(await listSessions()).toEqual([]);
+    // Finished again, later: the newer version wins on GitHub.
+    const second = { ...first, completedAt: "2026-09-30T18:05:00.000Z", notes: "rest done" };
+    await commitCompletedSession(second);
+    await runSync(clientFor(gh), "me");
+    expect(gh.json<WorkoutSession[]>("people/me/history/2026-09.json")).toMatchObject([{ id: first.id, notes: "rest done" }]);
+  });
+
+  it("after updating from an older version, re-reads history once and picks up newer copies it had skipped", async () => {
+    const gh = new FakeGitHub();
+    const cutShort = session("2026-09-30T05:20:00Z");
+    const finishedLater = { ...cutShort, completedAt: "2026-09-30T18:05:00.000Z", notes: "rest done" };
+    await importSessions([cutShort]);
+    const sha = gh.put("people/me/history/2026-09.json", [finishedLater]);
+    // What an old-version device leaves behind: month marked as seen, but it kept its old copy.
+    await setAppState("syncState", { monthShas: { "2026-09": sha }, initialUploadDone: true });
+    const r = await runSync(clientFor(gh), "me");
+    expect(r.pulled).toBe(1);
+    expect((await listSessions())[0].notes).toBe("rest done");
+    expect(await getAppState("syncState")).toMatchObject({ version: SYNC_STATE_VERSION });
+    // Only once: the next sync doesn't download the month again.
+    gh.requests = [];
+    await runSync(clientFor(gh), "me");
+    expect(gh.requests.filter((q) => q.path === "people/me/history/2026-09.json")).toEqual([]);
   });
 
   it("keeps finished workouts queued while offline", async () => {

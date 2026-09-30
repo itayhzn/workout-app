@@ -8,7 +8,7 @@ import { WeightUnitToggle } from "../../components/WeightUnitToggle";
 import { Banner, ConfirmDialog, EmptyState, Label, Modal, ProgressBar, Spinner, TypeBadge } from "../../components/ui";
 import { estimateWorkoutMinutes, formatClock, formatMinutes, formatNumber, sessionDurationMs } from "../../domain/format";
 import { weekdayOf } from "../../domain/schedule";
-import { sessionStats } from "../../domain/session";
+import { sessionStats, unfinishedCount } from "../../domain/session";
 import type { Workout, WorkoutSession } from "../../domain/types";
 import { useNow } from "../../hooks/useNow";
 import { exportHistory } from "../../services/historyService";
@@ -186,7 +186,7 @@ export function PhoneHome() {
 function ActiveWorkoutCard({ session, onDiscard }: { session: WorkoutSession; onDiscard: () => void }) {
   const now = useNow();
   const stats = useMemo(() => sessionStats(session), [session]);
-  const elapsed = (now - Date.parse(session.startedAt)) / 1000;
+  const elapsed = sessionDurationMs(session, now) / 1000;
   const done = stats.exercisesCompleted + stats.exercisesSkipped;
   return (
     <section className="card border-volt/50 bg-elevated p-5 shadow-volt">
@@ -201,7 +201,9 @@ function ActiveWorkoutCard({ session, onDiscard }: { session: WorkoutSession; on
       <div className="mt-2 flex items-end justify-between gap-3">
         <div className="min-w-0">
           <h2 className="truncate font-display text-2xl font-bold">{session.workoutName}</h2>
-          <p className="text-sm text-ink-2">Started {formatMinutes(elapsed * 1000)} ago</p>
+          <p className="text-sm text-ink-2">
+            {session.pausedMs ? `Resumed · ${formatMinutes(elapsed * 1000)} of training so far` : `Started ${formatMinutes(elapsed * 1000)} ago`}
+          </p>
         </div>
         <div className="font-display text-2xl font-bold text-volt tnum">{formatClock(elapsed)}</div>
       </div>
@@ -255,7 +257,8 @@ export function SessionRow({ session }: { session: WorkoutSession }) {
   const details = [formatMinutes(sessionDurationMs(session))];
   if (stats.setsCompleted) details.push(`${stats.setsCompleted} sets`);
   if (stats.distanceKm) details.push(`${formatNumber(stats.distanceKm)} km`);
-  if (stats.exercisesSkipped) details.push(`${stats.exercisesSkipped} skipped`);
+  const unfinished = unfinishedCount(session);
+  if (unfinished) details.push(`${unfinished} unfinished`);
   return (
     <Link to={`/history/${session.id}`} className="card flex items-center gap-4 px-4 py-3 hover:border-line-strong">
       <div className="w-12 shrink-0 rounded bg-elevated py-1 text-center">

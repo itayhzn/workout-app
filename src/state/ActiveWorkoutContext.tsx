@@ -3,7 +3,9 @@ import {
   completeNextSet,
   createSession,
   finishSession,
+  reopenSession,
   setSessionNotes,
+  uncompleteSet,
   type CompleteSetResult,
 } from "../domain/session";
 import { supersetNext } from "../domain/groups";
@@ -14,6 +16,7 @@ import {
   intervalPosition,
   pauseIntervals,
   resumeIntervals,
+  rewindIntervalStep,
   skipIntervalStep,
   startIntervals as startIntervalState,
 } from "../domain/intervals";
@@ -26,9 +29,11 @@ import {
   getActiveSession,
   getIntervalTimer,
   getRestTimer,
+  getSession,
   putActiveSession,
   putIntervalTimer,
   putRestTimer,
+  reopenCompletedSession,
 } from "../storage/indexedDb";
 import { notifyHistoryChanged } from "./history";
 
@@ -74,10 +79,14 @@ interface ActiveWorkoutValue {
   pauseIntervals: () => void;
   resumeIntervals: () => void;
   skipInterval: () => void;
+  /** Back: restart the current work step or go to the previous one, reopening anything already recorded. */
+  backInterval: () => void;
   extendInterval: (seconds: number) => void;
   stopIntervals: () => void;
   finish: (notes?: string) => Promise<WorkoutSession | undefined>;
   discard: () => Promise<void>;
+  /** Makes a finished session active again to complete what was skipped. Fails if another workout is active. */
+  resumeSession: (sessionId: string) => Promise<WorkoutSession>;
 }
 
 const Ctx = createContext<ActiveWorkoutValue | null>(null);
@@ -234,6 +243,20 @@ export function ActiveWorkoutProvider({ children }: { children: ReactNode }) {
   const pause = useCallback(() => withIntervals((t) => pauseIntervals(t)), [withIntervals]);
   const resume = useCallback(() => withIntervals((t) => resumeIntervals(t)), [withIntervals]);
   const skipInterval = useCallback(() => withIntervals((t) => skipIntervalStep(t)), [withIntervals]);
+  const backInterval = useCallback(() => {
+    const t = intervalRef.current;
+    const cur = sessionRef.current;
+    if (!t || !cur) return;
+    const { state, reopened } = rewindIntervalStep(t);
+    let next = cur;
+    for (const step of reopened) {
+      const ex = next.exercises.find((e) => e.id === step.exerciseId);
+      const set = ex?.kind === "timed" ? ex.sets.find((s) => s.setNumber === step.setNumber) : undefined;
+      if (set && set.status !== "pending") next = uncompleteSet(next, step.exerciseId, step.setNumber);
+    }
+    if (next !== cur) applySession(next);
+    applyIntervals(state);
+  }, [applySession, applyIntervals]);
   const extendInterval = useCallback((sec: number) => withIntervals((t) => extendIntervalStep(t, sec)), [withIntervals]);
   const stopIntervals = useCallback(() => {
     const t = intervalRef.current;
@@ -310,6 +333,27 @@ export function ActiveWorkoutProvider({ children }: { children: ReactNode }) {
     [],
   );
 
+  const resumeSession = useCallback(
+    async (sessionId: string) => {
+      if (sessionRef.current) throw new Error("Finish or discard the workout in progress first.");
+      const stored = await getSession(sessionId);
+      if (!stored) throw new Error("That workout isn't stored on this device.");
+      const reopened = reopenSession(stored);
+      await writeChain.current;
+      await reopenCompletedSession(reopened);
+      sessionRef.current = reopened;
+      timerRef.current = undefined;
+      intervalRef.current = undefined;
+      setSession(reopened);
+      setRestTimer(undefined);
+      setIntervalTimer(undefined);
+      backup(reopened);
+      notifyHistoryChanged();
+      return reopened;
+    },
+    [],
+  );
+
   const discard = useCallback(async () => {
     sessionRef.current = undefined;
     timerRef.current = undefined;
@@ -338,12 +382,14 @@ export function ActiveWorkoutProvider({ children }: { children: ReactNode }) {
       pauseIntervals: pause,
       resumeIntervals: resume,
       skipInterval,
+      backInterval,
       extendInterval,
       stopIntervals,
       finish,
       discard,
+      resumeSession,
     }),
-    [ready, session, restTimer, intervalTimer, storageError, start, update, completeSet, startRest, adjustRest, clearRest, startIntervals, pause, resume, skipInterval, extendInterval, stopIntervals, finish, discard],
+    [ready, session, restTimer, intervalTimer, storageError, start, update, completeSet, startRest, adjustRest, clearRest, startIntervals, pause, resume, skipInterval, backInterval, extendInterval, stopIntervals, finish, discard, resumeSession],
   );
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

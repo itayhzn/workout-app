@@ -125,9 +125,10 @@ export function totalSets(w: Workout): number {
   return w.exercises.reduce((n, e) => n + (e.target.kind === "strength" || e.target.kind === "timed" ? e.target.sets : 0), 0);
 }
 
-export function sessionDurationMs(s: WorkoutSession): number {
-  if (!s.completedAt) return Date.now() - Date.parse(s.startedAt);
-  return Date.parse(s.completedAt) - Date.parse(s.startedAt);
+/** Workout time, excluding any time spent finished before a resume. Live for active sessions. */
+export function sessionDurationMs(s: WorkoutSession, now: number = Date.now()): number {
+  const end = s.completedAt ? Date.parse(s.completedAt) : now;
+  return Math.max(0, end - Date.parse(s.startedAt) - (s.pausedMs ?? 0));
 }
 
 export function formatShortDate(iso: string): string {

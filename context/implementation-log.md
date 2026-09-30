@@ -2,11 +2,80 @@
 
 A record of what was built, the decisions made along the way, and the bugs found and fixed, newest first. For how the app works today, see [`dev-onboarding.md`](dev-onboarding.md).
 
-**Current state (2026-09-28)**
-- The code is on the `feature/workout-app` branch and pushed. Commit `0ad4a3b` contains entries 1–3, `d51488a` contains entries 4–5, and the "Add cross-device sync and multiple people" commit contains entries 6–7.
-- The private data repo `itayhzn/workout-data` exists. Its `main` has only a README describing the layout (commits `25f3065`, `d407d0b`). No people or data yet.
-- The app hasn't been merged to `main`, and GitHub Pages isn't enabled on the repo yet. Once it's merged and Pages is set to "GitHub Actions", the site will be at `https://itayhzn.github.io/workout-app/`.
-- Tests: 88 passing (unit + integration). Typecheck and production build are clean.
+**Current state (2026-09-30)**
+- **Live** at `https://itayhzn.github.io/workout-app/`: the feature branch was merged to `main` (PR #3) and GitHub Pages deploys via GitHub Actions.
+- The private data repo `itayhzn/workout-data` is in use. People: Itay (the starter two-a-day plan plus a daily Posture Reset, with workouts syncing) and Gal (her own plan, see entry 8).
+- Tests: 101 passing (unit + integration). Typecheck and production build are clean.
+
+---
+
+## 10. Back in the interval timer, and resuming a finished workout — 2026-09-30
+
+Both came from a real floor session. Itay's son pressed **Skip** on the phone and there was no way back. Later the 20-minute mobility session had to be cut short, with no way to finish the rest later.
+
+### Features
+- **Back button in the interval runner** (phone `IntervalPage`; controls are now Back · +10s · Pause · Skip).
+  - Works like a music player: more than 3s into a work step, it restarts that step; early in a step or during a rest or get-ready, it goes to the previous work step.
+  - Anything already recorded from that point on is reopened, so an accidentally skipped set runs again and is recorded properly. The skip marker is cleared too.
+  - Works while paused, and stays paused.
+  - Domain: `rewindIntervalStep` in `domain/intervals.ts`. Provider: `backInterval`.
+- **Un-skip on the exercise screens.** On the timed-exercise screen, skipped set rows were disabled; now tapping one reopens it. On the strength screen, a skipped set's editor offers **Un-skip**. `uncompleteSet` now also un-skips the exercise.
+- **Resume a finished workout.**
+  - The phone history detail (including the just-finished summary) shows **Resume workout · N unfinished** when a finished session has skipped work. The session becomes the active workout again: done work stays done, and skipped sets and exercises reopen.
+  - **The break isn't counted:** `WorkoutSession.pausedMs` accumulates the time between finishing and resuming, and `sessionDurationMs` subtracts it (the history duration, the live workout clock, and the home card, which reads "Resumed · N min of training so far").
+  - Refused while another workout is in progress; a banner links to that workout instead.
+  - Recent-workout rows show "N unfinished".
+  - Domain: `reopenSession`, `hasUnfinishedWork`, `unfinishedCount`. Storage: `reopenCompletedSession` (one transaction).
+- **Sync handles changed sessions.** Sessions used to be treated as immutable (the existing copy always won). Now, for the same id, the copy with the later `completedAt` wins (`isNewerSession`), both when merging a month file and when importing locally. So a resumed-and-finished session replaces the old copy on GitHub and on other devices. While a session is resumed, sync skips it so the old finished copy doesn't reappear in history. `importSessions` now reports `{ added, updated, skipped }`.
+- **Update safeguard, no data migration needed.** Existing data needs no conversion: `pausedMs` is optional, and the database schema and plan files are unchanged. One rollout edge case remained: a device still on the old version could sync a month containing a resumed-and-refinished session, skip the newer copy (old rule), and still mark the month as seen, so after updating it would never re-download it. Fix: `SyncState.version` (`SYNC_STATE_VERSION = 2`). On a device's first sync after updating, it forgets which months it has seen and re-downloads all history once. That's safe, because imports never duplicate and only a newer copy replaces an older one.
+
+### Tests added (101 total)
+- `domain/__tests__/resume.test.ts`:
+  - **Back:** restarts after the grace period; goes to the previous work step from a rest; jumps back over a rest from early in a step; reopens what was recorded; works while paused.
+  - **Resume:** reopens only skipped work and counts only workout time (5 + 10 minutes around a 13-hour break is 15 minutes); un-skipping a set un-skips its exercise.
+- Storage: a newer copy replaces an older one (never the other way round); resuming moves a session from history to the active slot.
+- Sync: a resumed workout isn't pulled back into history while active, and the re-finished version replaces the old one on GitHub. After updating from an older version, history is re-read once and a previously skipped newer copy is picked up; the next sync doesn't re-download.
+- `__tests__/backAndResume.test.tsx` (UI):
+  - Skip, then Back, reopens the set and restarts the full minute.
+  - Resume from a finished workout's page makes it active without the 3-hour break.
+  - Resume is refused while another workout is in progress.
+
+### Checked in a browser
+The real flow: start the floor session → start intervals → Skip Cat-Cow → **Back** (Cat-Cow at 1:00 again, "Interval 1 of 25") → Stop → Finish → the summary shows **Resume workout · 16 unfinished** → Resume → active again with the clock showing only workout time.
+
+### Bugs found and fixed
+| Bug | Cause | Fix |
+|---|---|---|
+| (Test) The "blocked resume" test found no banner | The setup saved the finished session *after* starting the other workout, and finishing correctly clears the active slot | Setup order swapped |
+| (Test) "01:00" matched twice | The countdown and the "Coming up" list both showed it | Assertion scoped to the timer |
+
+### Ideas not built
+- **A controls lock:** a long-press to unlock the runner's buttons, so a curious toddler can't skip, stop or pause. Back makes accidental skips recoverable, but not accidental Stops.
+
+---
+
+## 9. Home Push/Pull/Legs alternatives for Itay — 2026-09-30
+
+Data only; no app code changed. Data-repo commit `ff7bbee`.
+
+- **What:** three ~30-minute home workouts (`home-push`, `home-pull`, `home-legs`) for days a gym morning is missed. They're done **in addition to** the floor session and are **not on the schedule**; you start one from "Choose another workout". Documented in [`workout-plan.md`](workout-plan.md#home-alternatives-for-a-missed-gym-morning-added-2026-09-30).
+- **Equipment:** bodyweight, mat, a knee-high box, a sturdy table (for inverted rows) and one adjustable dumbbell of up to 11.25 kg. Intensity comes from harder positions (decline, one-arm, one-leg), slow lowering and higher rep ranges.
+- **Exercises:** 12 new ones were added to Itay's library. Existing exercises were reused where the movement is the same (the one-arm dumbbell row, Bulgarian split squat, and the warm-up moves), so "last time" and progression hints carry over between gym and home.
+- **Checked:** the app's parser and validator (no errors); the files are byte-identical to the app's canonical output; timing ≈ 2.8-min warm-up + 20–25 min of strength. The estimator counts one-arm and one-leg exercises once, so the real times (both sides) are about 27 / 29 / 30 minutes.
+
+**Noticed:** the duration estimate undercounts exercises done per arm or per leg. Marking them as unilateral (e.g. a `perSide` flag on the target) would make estimates and the set list clearer ("set 2 — left/right").
+
+---
+
+## 8. Plans for Gal, and a daily Posture Reset for both — 2026-09-30
+
+Data only; no app code changed. Written directly to the data repo (`itayhzn/workout-data`, commits `66f4f07` and `02a499f`).
+
+- **Gal** (`people/gal/plan/`, previously the empty plan): 2 full-body gym sessions, Mon "Gym A — Glutes & Back" and Thu "Gym B — Posterior Chain & Upper Back". Each is a 5-min warm-up + ~35 min of strength with supersets + an 8-min, 2-round core circuit, so ≈50 min. Plus Wed yoga class (50-min activity), Sat family walk (45 min), and a daily Posture Reset. Aimed at postural kyphosis: about 2 pulls per push, lower-trap work, stability-based core. Weights are conservative starting points. Full description in [`workout-plan-gal.md`](workout-plan-gal.md).
+- **Itay:** the same daily **Posture Reset** (5 min, 6 no-equipment moves) was appended to his plan and added to every day of his schedule. Nothing existing was changed. Documented in [`workout-plan.md`](workout-plan.md).
+- **How it was checked:** a temporary test (deleted afterwards) ran both plans through the app's own parser and `validateConfiguration` (no errors). It confirmed the files are byte-identical to what the app writes, so a later in-app edit produces a clean diff, and measured the durations: gym ≈ 4.9 + 35.5 + 8.2 min, posture 5.0 min.
+- **Starter plan unchanged:** `public/data/` and its `plan.test.ts` rules (two sessions per training day) are untouched. The posture routine exists only in the two people's plans.
+- **Noticed:** a yoga class is logged as a cardio activity, so its screen shows a distance field that doesn't apply. It works (tap Complete activity), but hiding distance for non-running activities would be a small improvement.
 
 ---
 
