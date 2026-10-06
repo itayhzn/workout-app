@@ -1,8 +1,12 @@
-import { CircleCheck, RotateCcw } from "lucide-react";
+import { CircleCheck, Clock, Play, RotateCcw } from "lucide-react";
 import { useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { SessionDetail } from "../../components/SessionDetail";
-import { Banner, EmptyState, Spinner } from "../../components/ui";
+import { Banner, EmptyState, Label, Spinner } from "../../components/ui";
+import { estimateWorkoutMinutes } from "../../domain/format";
+import { nextToday, todaysPlan } from "../../domain/schedule";
+import type { Workout } from "../../domain/types";
+import { useConfig } from "../../state/ConfigContext";
 import { hasUnfinishedWork, unfinishedCount } from "../../domain/session";
 import { useActiveWorkout } from "../../state/ActiveWorkoutContext";
 import { useSession, useSessions } from "../../state/history";
@@ -68,18 +72,70 @@ function ResumeButton({ sessionId, unfinished, primary }: { sessionId: string; u
   );
 }
 
+/** After finishing, the next workout scheduled today (e.g. the cardio after the lift), if nothing is in progress. */
+function useUpNext(enabled: boolean): Workout | undefined {
+  const config = useConfig();
+  const { session: active } = useActiveWorkout();
+  const { sessions, loading } = useSessions(12);
+  if (!enabled || loading || active || config.status !== "ready") return undefined;
+  return nextToday(todaysPlan(config.schedule, config.workouts, sessions, undefined));
+}
+
+function UpNextCard({ workout }: { workout: Workout }) {
+  const { exercises } = useConfig();
+  const { start } = useActiveWorkout();
+  const navigate = useNavigate();
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string>();
+  return (
+    <section className="card flex flex-col gap-3 border-line-strong bg-elevated p-4">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <Label className="text-volt">Up next today</Label>
+          <h2 className="mt-1 truncate font-display text-2xl font-bold">{workout.name}</h2>
+        </div>
+        <span className="flex shrink-0 items-center gap-1 pt-1 text-sm text-ink-2 tnum">
+          <Clock size={14} /> ~{estimateWorkoutMinutes(workout)} min
+        </span>
+      </div>
+      {error && <Banner tone="error">{error}</Banner>}
+      <button
+        className="btn-primary h-14 w-full text-base shadow-volt"
+        disabled={busy}
+        onClick={async () => {
+          setBusy(true);
+          setError(undefined);
+          try {
+            const s = await start(workout, exercises);
+            navigate(`/workout/${s.id}`, { replace: true });
+          } catch (e) {
+            setError(e instanceof Error ? e.message : String(e));
+            setBusy(false);
+          }
+        }}
+      >
+        <Play size={18} /> Start {workout.name}
+      </button>
+      <Link to="/?choose=1" replace className="label self-center py-1 hover:text-ink">
+        Or choose another workout
+      </Link>
+    </section>
+  );
+}
+
 export function PhoneHistoryDetail() {
   const { sessionId } = useParams();
   const [params] = useSearchParams();
   const justFinished = params.get("done") === "1";
   const { session, loading } = useSession(sessionId);
+  const upNext = useUpNext(justFinished);
   const resumable = !!session && session.status === "completed" && hasUnfinishedWork(session);
   const footer =
     session && (justFinished || resumable) ? (
       <>
         {resumable && <ResumeButton sessionId={session.id} unfinished={unfinishedCount(session)} primary={!justFinished} />}
         {justFinished && (
-          <Link to="/" replace className="btn-primary h-14 w-full text-base">
+          <Link to="/" replace className={`${upNext ? "btn-secondary" : "btn-primary"} h-14 w-full text-base`}>
             Done
           </Link>
         )}
@@ -100,6 +156,7 @@ export function PhoneHistoryDetail() {
               <div className="font-display text-xl font-bold">Workout complete</div>
             </div>
           )}
+          {upNext && <UpNextCard workout={upNext} />}
           <SessionDetail session={session} />
         </>
       )}

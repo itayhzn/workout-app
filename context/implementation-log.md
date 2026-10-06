@@ -5,7 +5,59 @@ A record of what was built, the decisions made along the way, and the bugs found
 **Current state (2026-10-06)**
 - **Live** at `https://itayhzn.github.io/workout-app/`: the feature branch was merged to `main` (PR #3) and GitHub Pages deploys via GitHub Actions.
 - The private data repo `itayhzn/workout-data` is in use. People: Itay (the starter two-a-day plan plus a daily Posture Reset, with workouts syncing) and Gal (her own plan, see entry 8).
-- Tests: 126 passing (unit + integration). Typecheck and production build are clean.
+- Tests: 135 passing (unit + integration). Typecheck and production build are clean.
+
+---
+
+## 12. Lift and cardio as separate workouts — 2026-10-06
+
+Each morning workout was warm-up + lift + cardio in one (e.g. "Pull B + Stair Climber"), so the cardio couldn't be swapped. Itay wanted to mix and match, for example Pull B with a swim. The options were a combined workout for every pairing, a "swap the cardio part" feature, or splitting them. Splitting needs no new model: the app already handles several workouts a day (floor sessions and the Posture Reset). The app got two small additions so two workouts in a row still feel like one morning.
+
+### Plan data (starter plan and Itay's plan, the same change)
+- **The six morning workouts became lifts:** warm-up + lifting, named Push A, Pull A, Legs A, Push B, Pull B and Legs B, with type `strength`.
+  - **They keep their ids** (`push-a-easy-run`, `pull-b-stairs`, …), because ids never change on rename. History, the schedule and anything stored keep pointing at them, at the cost of ids that still name the old cardio.
+- **Six new cardio workouts** (type `aerobic`): `easy-run`, `run-rope`, `steady-swim`, `technique-swim`, `stair-climber`, `interval-swim`. Their items are exactly the old cardio items.
+- **Both halves keep `leaveBy: 07:25`**, so the countdown runs through the cardio too.
+- **The schedule** puts the lift, then its usual cardio, then the floor session (then Posture Reset for Itay).
+- **How it was done:** a one-off script (deleted afterwards) used the app's own parser, validator and canonical writer. It first checked both files were already canonical, so the diff contains only the split. Data-repo commit `87a6b66`. Gal's plan has no combined workouts and is unchanged.
+
+### App
+- **`todaysPlan`** (`domain/schedule.ts`) gives today's scheduled workouts and which are done.
+  - A workout finished today (or the one in progress) fills its own slot, or else the first open slot of the same type. So Pull B on a Legs A day counts as the lift, and Stair Climber instead of Steady Swim counts as the cardio.
+  - `nextToday` gives the first slot that's neither done nor in progress.
+- **Summary after finishing:** an **Up next today** card (e.g. "Steady Swim · ~30 min · Start Steady Swim") with **Or choose another workout**. That link opens home with the picker already open (`/?choose=1`). Done becomes the secondary button when there's something next.
+- **Home:**
+  - Today's finished workouts collapse into **Done today** rows ("Pull B · Done 06:10 · in place of Legs A").
+  - The first remaining one is labelled **Up next**.
+  - The workout in progress isn't shown again as a card.
+  - When everything is done: "Everything scheduled today is done."
+- **`plan.test.ts` rewritten** for the new structure:
+  - Lift + cardio + floor each training day, both morning halves with leave-by.
+  - Lifts contain no cardio and cardio workouts contain no lifting, so any cardio can follow any lift.
+  - Every cardio workout is used once a week.
+  - Time budgets per half, and the running rule now checked on the cardio workouts.
+
+### Tests (135 total)
+- `domain/__tests__/today.test.ts` (6):
+  - Nothing done yet.
+  - Finished → next.
+  - A swapped-in lift or cardio fills the right slot.
+  - A workout's own slot wins over another of the same type.
+  - The workout in progress is taken, and other days are ignored.
+  - Nothing is next when everything's done.
+- `__tests__/upNext.test.tsx` (2):
+  - Finishing a swapped-in Pull B offers today's Steady Swim, and Start begins it.
+  - Home shows "Pull B · in place of Legs A" under Done today, Steady Swim as Up next, Legs A gone, and the picker open from `?choose=1`.
+- `plan.test.ts`: 7 checks of the split starter plan.
+
+### Checked in a browser
+At 400px with the split starter plan on a Tuesday (Legs A day):
+- Chose Pull B and finished it. The summary offered **Up next today: Steady Swim**.
+- **Or choose another workout** went home: "Done today: Pull B · in place of Legs A", then Steady Swim as Up next, then the floor session.
+
+### Notes
+- A finished workout counts as done even if most of it was skipped. A cut-short workout can still be resumed from its summary.
+- On a swap, the "no running on or right after a leg day" rule is up to you. It's only enforced in the schedule's defaults.
 
 ---
 

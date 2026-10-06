@@ -1,26 +1,32 @@
 {
   "sunday": [
     "push-a-easy-run",
+    "easy-run",
     "floor-mobility-core"
   ],
   "monday": [
     "pull-a-run-rope",
+    "run-rope",
     "floor-mobility-flex"
   ],
   "tuesday": [
     "legs-a-steady-swim",
+    "steady-swim",
     "floor-mobility-core"
   ],
   "wednesday": [
     "push-b-technique-swim",
+    "technique-swim",
     "floor-mobility-flex"
   ],
   "thursday": [
     "pull-b-stairs",
+    "stair-climber",
     "floor-mobility-core"
   ],
   "friday": [
     "legs-b-interval-swim",
+    "interval-swim",
     "floor-mobility-flex"
   ],
   "saturday": [
