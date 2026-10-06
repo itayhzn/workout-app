@@ -2,7 +2,9 @@
 
 **Goals:** general fitness, weight loss, body composition, and undoing the effects of a desk job (stiff back and hips).
 **Structure:** two sessions a day, Sunday–Friday (a morning gym+pool session and a floor session at home with your son). Saturday is a short stretch and a family walk.
-**In the app:** this is the **starter plan** (`public/data/`). When you add yourself on the People page with "Starter plan", you get your own copy in the data repo, and that copy is what the app shows each day. Sunday has **Push A + Easy Run** and **Floor: Mobility + Core**, and so on.
+**In the app:** this is the **starter plan** (`public/data/`). When you add yourself on the People page with "Starter plan", you get your own copy in the data repo, and that copy is what the app shows each day. Sunday has **Push A**, **Easy Run** and **Floor: Mobility + Core**, and so on.
+
+**Lift and cardio are separate workouts** (since 2026-10-06), so you can mix and match: any cardio can follow any lift. The schedule pairs them as in the table below. When you finish the lift, the app offers that day's cardio, or you can pick another one. A swapped-in workout counts for the day: do Pull B on a Legs A day and the home screen shows it as done in place of Legs A. When you swap, keep the rule below in mind: no running or rope on a leg day or the day after one.
 
 ---
 
@@ -11,11 +13,11 @@
 | Time | What |
 |---|---|
 | 4:45 | Wake up, water, something small (banana/coffee) |
-| 5:00 | **Home warm-up, 5 min**. Start the morning workout in the app; it runs the warm-up hands-free |
+| 5:00 | **Home warm-up, 5 min**. Start the day's lift in the app; the warm-up is its first part and runs hands-free |
 | 5:10 | Drive (≈20 min) |
 | 5:30–6:10 | **Lift, ≈40 min** |
 | 6:10–6:15 | Change / walk to the pool (buffer) |
-| 6:15–6:45 | **Cardio, 30 min** |
+| 6:15–6:45 | **Cardio, 30 min**. Finishing the lift offers the day's cardio workout; tap Start, or choose another |
 | 6:45–6:50 | Buffer |
 | 6:50–7:20 | Shower + shave |
 | 7:25 | **Leave**. The app counts down to 7:25 during the session |
@@ -31,6 +33,7 @@
 | **Cardio** | Easy run | Run + rope | Swim: steady | Swim: technique | Stair climber | Swim: 100 m repeats | Family walk 45′ |
 | **Floor** | Mobility + Core | Mobility + Flexibility | Mobility + Core | Mobility + Flexibility | Mobility + Core | Mobility + Flexibility | Stretch 10′ |
 
+- **In the app**, the Lift row is the workouts Push A … Legs B (warm-up + lifting), and the Cardio row is the workouts Easy Run, Run & Rope, Steady Swim, Technique Swim, Stair Climber and Interval Swim.
 - **Leg days are always paired with swimming**, which is easy on the joints. Running and rope skipping never fall on a leg day or the day after one.
 - **Each muscle group is trained twice a week,** with an A and a B version so the exercises vary.
 - **Total ≈ 10 hours a week.**

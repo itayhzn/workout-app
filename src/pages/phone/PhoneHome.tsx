@@ -1,13 +1,13 @@
-import { ChevronDown, ChevronRight, Cloud, Download, History, Monitor, Play, RotateCcw, Scale, Settings, Volume2, VolumeX, X } from "lucide-react";
+import { ChevronDown, ChevronRight, CircleCheck, Cloud, Download, History, Monitor, Play, RotateCcw, Scale, Settings, Volume2, VolumeX, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { SetupCodeForm } from "../../components/Pairing";
 import { PersonSwitcher } from "../../components/People";
 import { SyncBadge, SyncRow } from "../../components/SyncStatus";
 import { WeightUnitToggle } from "../../components/WeightUnitToggle";
 import { Banner, ConfirmDialog, EmptyState, Label, Modal, ProgressBar, Spinner, TypeBadge } from "../../components/ui";
-import { estimateWorkoutMinutes, formatClock, formatMinutes, formatNumber, sessionDurationMs } from "../../domain/format";
-import { weekdayOf } from "../../domain/schedule";
+import { estimateWorkoutMinutes, formatClock, formatMinutes, formatNumber, formatTime, sessionDurationMs } from "../../domain/format";
+import { todaysPlan, type TodaySlot } from "../../domain/schedule";
 import { sessionStats, unfinishedCount } from "../../domain/session";
 import type { Workout, WorkoutSession } from "../../domain/types";
 import { useNow } from "../../hooks/useNow";
@@ -27,8 +27,11 @@ export function PhoneHome() {
   const config = useConfig();
   const active = useActiveWorkout();
   const navigate = useNavigate();
-  const { sessions: recent } = useSessions(5);
-  const [pickerOpen, setPickerOpen] = useState(false);
+  const { sessions: history } = useSessions(12);
+  const recent = history.slice(0, 5);
+  // "Or choose another workout" after finishing one opens the picker straight away.
+  const [params] = useSearchParams();
+  const [pickerOpen, setPickerOpen] = useState(params.get("choose") === "1");
   const [selectedId, setSelectedId] = useState<string>();
   const [pendingStart, setPendingStart] = useState<Workout>();
   const [confirmDiscard, setConfirmDiscard] = useState(false);
@@ -37,8 +40,11 @@ export function PhoneHome() {
   const [error, setError] = useState<string>();
 
   const today = new Date();
-  const todayIds = config.schedule[weekdayOf(today)] ?? [];
-  const todays = todayIds.map((id) => config.workoutById(id)).filter((w): w is Workout => !!w);
+  const slots = todaysPlan(config.schedule, config.workouts, history, active.session, today);
+  const todays = slots.map((s) => s.workout);
+  const done = slots.filter((s) => s.doneBy);
+  const todo = slots.filter((s) => !s.doneBy && !s.active);
+  const started = slots.length > todo.length;
   const selected = selectedId ? config.workoutById(selectedId) : undefined;
 
   useEffect(() => {
@@ -109,9 +115,22 @@ export function PhoneHome() {
 
       {config.status === "ready" && (
         <>
-          {todays.map((w) => (
-            <WorkoutPreviewCard key={w.id} workout={w} label="Scheduled today" onStart={() => requestStart(w)} highlight={!active.session} busy={busy} />
+          {done.length > 0 && <DoneToday slots={done} />}
+          {todo.map(({ workout: w }, i) => (
+            <WorkoutPreviewCard
+              key={w.id}
+              workout={w}
+              label={started && i === 0 ? "Up next" : "Scheduled today"}
+              onStart={() => requestStart(w)}
+              highlight={!active.session && (i === 0 || !started)}
+              busy={busy}
+            />
           ))}
+          {todays.length > 0 && todo.length === 0 && !active.session && (
+            <div className="card flex items-center gap-3 p-4 text-emerald">
+              <CircleCheck size={22} /> <span className="font-semibold">Everything scheduled today is done.</span>
+            </div>
+          )}
           {todays.length === 0 && (
             <EmptyState title="No workout scheduled today" body="Choose a workout below, or enjoy the rest day." />
           )}
@@ -180,6 +199,32 @@ export function PhoneHome() {
       />
       <PhoneSettings open={settingsOpen} onClose={() => setSettingsOpen(false)} />
     </PhoneScreen>
+  );
+}
+
+/** Today's scheduled workouts that are already done, as compact rows, so what's next stays at the top. */
+function DoneToday({ slots }: { slots: TodaySlot[] }) {
+  return (
+    <section>
+      <Label className="mb-2">Done today</Label>
+      <ul className="flex flex-col gap-2">
+        {slots.map(({ workout, doneBy }) => (
+          <li key={workout.id}>
+            <Link to={`/history/${doneBy!.id}`} className="card flex items-center gap-3 px-4 py-3 hover:border-line-strong">
+              <CircleCheck size={22} className="shrink-0 text-emerald" />
+              <div className="min-w-0 flex-1">
+                <div className="truncate font-semibold">{doneBy!.workoutName}</div>
+                <div className="truncate text-sm text-ink-2 tnum">
+                  Done {formatTime(doneBy!.completedAt!)}
+                  {doneBy!.workoutId !== workout.id && ` · in place of ${workout.name}`}
+                </div>
+              </div>
+              <ChevronRight size={18} className="text-ink-3" />
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }
 
