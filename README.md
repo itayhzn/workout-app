@@ -30,7 +30,7 @@ Weights can be shown and entered in **kg or lbs** (phone ⚙ or desktop Settings
 ### Training plan
 
 `public/data/` ships the **starter plan**, a two-a-day plan (details in `context/workout-plan.md`). New people can start from it:
-- **Sun–Fri mornings:** push/pull/legs twice (A and B versions) with supersets, plus 30 min of cardio (run, run + rope, swims, stair climber), with a 7:25 leave-by countdown.
+- **Sun–Fri mornings:** push/pull/legs twice (A and B versions) with supersets, plus 30 min of cardio (run, run + rope, swims, stair climber), with a 7:25 leave-by countdown. Lift and cardio are separate workouts, so you can pair any cardio with any lift. After the lift, the app offers the day's cardio.
 - **Sun–Fri floor sessions:** mobility plus a core circuit or flexibility.
 - **Saturday:** a stretch and a 45-minute family walk.
 

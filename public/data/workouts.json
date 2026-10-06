@@ -1,8 +1,8 @@
 [
   {
     "id": "push-a-easy-run",
-    "name": "Push A + Easy Run",
-    "type": "mixed",
+    "name": "Push A",
+    "type": "strength",
     "leaveBy": "07:25",
     "exercises": [
       {
@@ -150,21 +150,13 @@
           "weightKg": 20,
           "restSeconds": 60
         }
-      },
-      {
-        "id": "push-a-easy-run-14",
-        "exerciseId": "running",
-        "target": {
-          "kind": "cardio",
-          "durationMinutes": 30
-        }
       }
     ]
   },
   {
     "id": "pull-a-run-rope",
-    "name": "Pull A + Run & Rope",
-    "type": "mixed",
+    "name": "Pull A",
+    "type": "strength",
     "leaveBy": "07:25",
     "exercises": [
       {
@@ -297,39 +289,13 @@
           "repsMax": 15,
           "restSeconds": 60
         }
-      },
-      {
-        "id": "pull-a-run-rope-13",
-        "exerciseId": "running",
-        "target": {
-          "kind": "cardio",
-          "durationMinutes": 10
-        }
-      },
-      {
-        "id": "pull-a-run-rope-14",
-        "exerciseId": "rope-skipping",
-        "target": {
-          "kind": "timed",
-          "sets": 6,
-          "workSeconds": 30,
-          "restSeconds": 30
-        }
-      },
-      {
-        "id": "pull-a-run-rope-15",
-        "exerciseId": "running",
-        "target": {
-          "kind": "cardio",
-          "durationMinutes": 10
-        }
       }
     ]
   },
   {
     "id": "legs-a-steady-swim",
-    "name": "Legs A + Steady Swim",
-    "type": "mixed",
+    "name": "Legs A",
+    "type": "strength",
     "leaveBy": "07:25",
     "exercises": [
       {
@@ -463,37 +429,13 @@
           "weightKg": 30,
           "restSeconds": 60
         }
-      },
-      {
-        "id": "legs-a-steady-swim-13",
-        "exerciseId": "freestyle-easy",
-        "target": {
-          "kind": "swimming",
-          "durationMinutes": 5
-        }
-      },
-      {
-        "id": "legs-a-steady-swim-14",
-        "exerciseId": "freestyle-steady",
-        "target": {
-          "kind": "swimming",
-          "durationMinutes": 20
-        }
-      },
-      {
-        "id": "legs-a-steady-swim-15",
-        "exerciseId": "freestyle-easy",
-        "target": {
-          "kind": "swimming",
-          "durationMinutes": 5
-        }
       }
     ]
   },
   {
     "id": "push-b-technique-swim",
-    "name": "Push B + Technique Swim",
-    "type": "mixed",
+    "name": "Push B",
+    "type": "strength",
     "leaveBy": "07:25",
     "exercises": [
       {
@@ -626,37 +568,13 @@
           "repsMax": 15,
           "restSeconds": 60
         }
-      },
-      {
-        "id": "push-b-technique-swim-13",
-        "exerciseId": "freestyle-easy",
-        "target": {
-          "kind": "swimming",
-          "durationMinutes": 5
-        }
-      },
-      {
-        "id": "push-b-technique-swim-14",
-        "exerciseId": "swim-drills",
-        "target": {
-          "kind": "swimming",
-          "durationMinutes": 20
-        }
-      },
-      {
-        "id": "push-b-technique-swim-15",
-        "exerciseId": "freestyle-easy",
-        "target": {
-          "kind": "swimming",
-          "durationMinutes": 5
-        }
       }
     ]
   },
   {
     "id": "pull-b-stairs",
-    "name": "Pull B + Stair Climber",
-    "type": "mixed",
+    "name": "Pull B",
+    "type": "strength",
     "leaveBy": "07:25",
     "exercises": [
       {
@@ -789,21 +707,13 @@
           "weightKg": 10,
           "restSeconds": 60
         }
-      },
-      {
-        "id": "pull-b-stairs-13",
-        "exerciseId": "stair-climber",
-        "target": {
-          "kind": "cardio",
-          "durationMinutes": 30
-        }
       }
     ]
   },
   {
     "id": "legs-b-interval-swim",
-    "name": "Legs B + Interval Swim",
-    "type": "mixed",
+    "name": "Legs B",
+    "type": "strength",
     "leaveBy": "07:25",
     "exercises": [
       {
@@ -937,9 +847,67 @@
           "weightKg": 30,
           "restSeconds": 60
         }
+      }
+    ]
+  },
+  {
+    "id": "easy-run",
+    "name": "Easy Run",
+    "type": "aerobic",
+    "leaveBy": "07:25",
+    "exercises": [
+      {
+        "id": "easy-run-1",
+        "exerciseId": "running",
+        "target": {
+          "kind": "cardio",
+          "durationMinutes": 30
+        }
+      }
+    ]
+  },
+  {
+    "id": "run-rope",
+    "name": "Run & Rope",
+    "type": "aerobic",
+    "leaveBy": "07:25",
+    "exercises": [
+      {
+        "id": "run-rope-1",
+        "exerciseId": "running",
+        "target": {
+          "kind": "cardio",
+          "durationMinutes": 10
+        }
       },
       {
-        "id": "legs-b-interval-swim-13",
+        "id": "run-rope-2",
+        "exerciseId": "rope-skipping",
+        "target": {
+          "kind": "timed",
+          "sets": 6,
+          "workSeconds": 30,
+          "restSeconds": 30
+        }
+      },
+      {
+        "id": "run-rope-3",
+        "exerciseId": "running",
+        "target": {
+          "kind": "cardio",
+          "durationMinutes": 10
+        }
+      }
+    ]
+  },
+  {
+    "id": "steady-swim",
+    "name": "Steady Swim",
+    "type": "aerobic",
+    "leaveBy": "07:25",
+    "exercises": [
+      {
+        "id": "steady-swim-1",
         "exerciseId": "freestyle-easy",
         "target": {
           "kind": "swimming",
@@ -947,7 +915,87 @@
         }
       },
       {
-        "id": "legs-b-interval-swim-14",
+        "id": "steady-swim-2",
+        "exerciseId": "freestyle-steady",
+        "target": {
+          "kind": "swimming",
+          "durationMinutes": 20
+        }
+      },
+      {
+        "id": "steady-swim-3",
+        "exerciseId": "freestyle-easy",
+        "target": {
+          "kind": "swimming",
+          "durationMinutes": 5
+        }
+      }
+    ]
+  },
+  {
+    "id": "technique-swim",
+    "name": "Technique Swim",
+    "type": "aerobic",
+    "leaveBy": "07:25",
+    "exercises": [
+      {
+        "id": "technique-swim-1",
+        "exerciseId": "freestyle-easy",
+        "target": {
+          "kind": "swimming",
+          "durationMinutes": 5
+        }
+      },
+      {
+        "id": "technique-swim-2",
+        "exerciseId": "swim-drills",
+        "target": {
+          "kind": "swimming",
+          "durationMinutes": 20
+        }
+      },
+      {
+        "id": "technique-swim-3",
+        "exerciseId": "freestyle-easy",
+        "target": {
+          "kind": "swimming",
+          "durationMinutes": 5
+        }
+      }
+    ]
+  },
+  {
+    "id": "stair-climber",
+    "name": "Stair Climber",
+    "type": "aerobic",
+    "leaveBy": "07:25",
+    "exercises": [
+      {
+        "id": "stair-climber-1",
+        "exerciseId": "stair-climber",
+        "target": {
+          "kind": "cardio",
+          "durationMinutes": 30
+        }
+      }
+    ]
+  },
+  {
+    "id": "interval-swim",
+    "name": "Interval Swim",
+    "type": "aerobic",
+    "leaveBy": "07:25",
+    "exercises": [
+      {
+        "id": "interval-swim-1",
+        "exerciseId": "freestyle-easy",
+        "target": {
+          "kind": "swimming",
+          "durationMinutes": 5
+        }
+      },
+      {
+        "id": "interval-swim-2",
         "exerciseId": "freestyle-intervals",
         "target": {
           "kind": "swimming",
@@ -956,7 +1004,7 @@
         }
       },
       {
-        "id": "legs-b-interval-swim-15",
+        "id": "interval-swim-3",
         "exerciseId": "freestyle-easy",
         "target": {
           "kind": "swimming",
