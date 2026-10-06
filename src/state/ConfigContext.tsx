@@ -47,6 +47,8 @@ interface ConfigContextValue extends Config {
   saveExercise: (e: Exercise) => Promise<void>;
   deleteExercise: (id: string) => Promise<void>;
   saveWorkout: (w: Workout) => Promise<void>;
+  /** Changes a workout starting from the latest copy of the plan. Resolves false when there was nothing to save. */
+  updateWorkout: (id: string, fn: (w: Workout) => Workout) => Promise<boolean>;
   deleteWorkout: (id: string) => Promise<void>;
   saveSchedule: (s: WeeklySchedule) => Promise<void>;
   publishLocal: () => Promise<void>;
@@ -160,6 +162,17 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
     [commit],
   );
 
+  const updateWorkout = useCallback(
+    async (id: string, fn: (w: Workout) => Workout) => {
+      const workout = current().workouts.find((w) => w.id === id);
+      const next = workout && fn(workout);
+      if (!workout || next === workout) return false;
+      await saveWorkout(next!);
+      return true;
+    },
+    [saveWorkout],
+  );
+
   const deleteWorkout = useCallback(
     async (id: string) => {
       const cfg = current();
@@ -220,12 +233,13 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
       saveExercise,
       deleteExercise,
       saveWorkout,
+      updateWorkout,
       deleteWorkout,
       saveSchedule,
       publishLocal,
       discardLocal,
     };
-  }, [state, status, error, remote, reload, reconnect, saveExercise, deleteExercise, saveWorkout, deleteWorkout, saveSchedule, publishLocal, discardLocal]);
+  }, [state, status, error, remote, reload, reconnect, saveExercise, deleteExercise, saveWorkout, updateWorkout, deleteWorkout, saveSchedule, publishLocal, discardLocal]);
 
   return <ConfigContext.Provider value={value}>{children}</ConfigContext.Provider>;
 }

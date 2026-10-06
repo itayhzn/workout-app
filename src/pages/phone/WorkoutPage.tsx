@@ -1,9 +1,10 @@
-import { ArrowRight, ChevronRight, CircleCheck, CircleSlash, Ellipsis, Flag, Timer, TriangleAlert, Trash2 } from "lucide-react";
-import { useState } from "react";
+import { ArrowRight, ChevronRight, CircleCheck, CircleSlash, Ellipsis, Flag, Plus, Timer, TriangleAlert, Trash2 } from "lucide-react";
+import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { ExerciseImage } from "../../components/ExerciseImage";
 import { Banner, ConfirmDialog, Label, Modal, ProgressBar } from "../../components/ui";
 import { formatClock, formatNumber, formatSeconds, formatTarget, formatWeight, formatWeightValue, sessionDurationMs } from "../../domain/format";
+import { AddedTag } from "../../components/AddedTag";
 import { GroupLabel } from "../../components/GroupLabel";
 import { LeaveByChip } from "../../components/LeaveByChip";
 import { groupRuns } from "../../domain/groups";
@@ -19,16 +20,25 @@ import { useConfig } from "../../state/ConfigContext";
 import { PhoneHeader, PhoneScreen } from "./PhoneLayout";
 import { TimerDock } from "./TimerDock";
 import { SessionGuard } from "./SessionGuard";
+import { AddExerciseSheet } from "./AddExerciseSheet";
 
 export function WorkoutPage() {
   return <SessionGuard>{(session) => <WorkoutOverview session={session} />}</SessionGuard>;
 }
 
 function WorkoutOverview({ session }: { session: WorkoutSession }) {
-  const { discard, storageError } = useActiveWorkout();
+  const { discard, storageError, addExercise } = useActiveWorkout();
   const navigate = useNavigate();
   const now = useNow();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [adding, setAdding] = useState(false);
+  const [justAdded, setJustAdded] = useState<string>();
+  // The button is at the bottom of the list but the exercise goes in up next: bring it into view.
+  useEffect(() => {
+    if (!justAdded) return;
+    document.getElementById(`exercise-${justAdded}`)?.scrollIntoView?.({ behavior: "smooth", block: "center" });
+    setJustAdded(undefined);
+  }, [justAdded]);
   const [confirmDiscard, setConfirmDiscard] = useState(false);
   const stats = sessionStats(session);
   const done = stats.exercisesCompleted + stats.exercisesSkipped;
@@ -78,22 +88,43 @@ function WorkoutOverview({ session }: { session: WorkoutSession }) {
         {groupRuns(session.exercises).map((run) => {
           const item = (ex: SessionExercise) =>
             ex.id === current?.id ? <CurrentExerciseCard session={session} ex={ex} /> : <ExerciseTile session={session} ex={ex} />;
-          if (run.length < 2) return <li key={run[0].id}>{item(run[0])}</li>;
+          if (run.length < 2) return <li key={run[0].id} id={`exercise-${run[0].id}`}>{item(run[0])}</li>;
           const rounds = Math.max(...run.map((e) => (isSetBased(e) ? e.sets.length : 1)));
           return (
             <li key={run[0].id} className="rounded-xl border border-dashed border-volt/40 p-2">
               <GroupLabel kind={run[0].kind} rounds={rounds} className="mb-2 ml-1" />
               <ul className="flex flex-col gap-2">
                 {run.map((ex) => (
-                  <li key={ex.id}>{item(ex)}</li>
+                  <li key={ex.id} id={`exercise-${ex.id}`}>{item(ex)}</li>
                 ))}
               </ul>
             </li>
           );
         })}
       </ul>
+      <button className="btn-secondary h-12 w-full border-dashed normal-case" onClick={() => setAdding(true)}>
+        <Plus size={18} /> Add exercise
+      </button>
 
+      <AddExerciseSheet
+        open={adding}
+        session={session}
+        onClose={() => setAdding(false)}
+        onPick={(exercise, source) => {
+          setJustAdded(addExercise(exercise, source));
+          setAdding(false);
+        }}
+      />
       <Modal open={menuOpen} onClose={() => setMenuOpen(false)} title="Workout actions">
+        <button
+          className="card mb-2 flex h-14 w-full items-center gap-3 px-4 text-left"
+          onClick={() => {
+            setMenuOpen(false);
+            setAdding(true);
+          }}
+        >
+          <Plus size={18} /> Add an exercise to today's workout
+        </button>
         <button
           className="card flex h-14 w-full items-center gap-3 px-4 text-left text-danger"
           onClick={() => {
@@ -153,7 +184,10 @@ function ExerciseTile({ session, ex }: { session: WorkoutSession; ex: SessionExe
       </div>
       <div className="min-w-0 flex-1">
         {!complete && !skipped && <Label className="mb-0.5">Upcoming</Label>}
-        <div className={`truncate text-lg font-semibold ${complete || skipped ? "text-ink-2" : ""}`}>{ex.exerciseName}</div>
+        <div className={`truncate text-lg font-semibold ${complete || skipped ? "text-ink-2" : ""}`}>
+          {ex.exerciseName}
+          {ex.added && <AddedTag className="ml-2" />}
+        </div>
         <div className="truncate text-sm text-ink-2 tnum">{exerciseSummary(ex, unit)}</div>
         {ex.missingDefinition && (
           <div className="mt-1 flex items-center gap-1 text-xs text-warn">
@@ -197,7 +231,10 @@ function CurrentExerciseCard({ session, ex }: { session: WorkoutSession; ex: Ses
               {running ? "Timer running" : ex.status === "in_progress" ? "In progress" : "Up next"}
               {nextSet && isSetBased(ex) && ex.sets.length > 1 && ` · Set ${nextSet.setNumber} of ${ex.sets.length}`}
             </Label>
-            <div className="truncate font-display text-xl font-bold">{ex.exerciseName}</div>
+            <div className="truncate font-display text-xl font-bold">
+              {ex.exerciseName}
+              {ex.added && <AddedTag className="ml-2" />}
+            </div>
             <div className="text-sm text-ink-2 tnum">Target: {formatTarget(ex.prescribed, unit)}</div>
           </div>
         </Link>

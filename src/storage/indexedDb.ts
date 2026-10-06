@@ -1,5 +1,6 @@
 import { openDB, type DBSchema, type IDBPDatabase } from "idb";
 import { isNewerSession } from "../domain/session";
+import type { PlanChange } from "../domain/planChanges";
 import type { Config, IntervalTimerState, RestTimerState, WorkoutSession } from "../domain/types";
 
 export type ConfigSource = "static" | "github" | "local";
@@ -112,15 +113,37 @@ export async function clearActiveWorkout(): Promise<void> {
  * Atomically moves a finished session into history, clears active state and queues it for future sync.
  * If anything fails, the active workout is left untouched.
  */
-export async function commitCompletedSession(session: WorkoutSession): Promise<void> {
+export async function commitCompletedSession(session: WorkoutSession, planChanges: PlanChange[] = []): Promise<void> {
   const database = await db();
-  const tx = database.transaction(["workoutSessions", "activeWorkout", "syncQueue"], "readwrite");
-  await Promise.all([
+  const tx = database.transaction(["workoutSessions", "activeWorkout", "syncQueue", "appState"], "readwrite");
+  const writes: Promise<unknown>[] = [
     tx.objectStore("workoutSessions").put(session),
     tx.objectStore("activeWorkout").clear(),
     tx.objectStore("syncQueue").put({ sessionId: session.id, queuedAt: new Date().toISOString() }),
-    tx.done,
-  ]);
+  ];
+  if (planChanges.length) {
+    const store = tx.objectStore("appState");
+    const queued = ((await store.get(PLAN_CHANGES_KEY)) as PlanChange[] | undefined) ?? [];
+    writes.push(store.put([...queued, ...planChanges], PLAN_CHANGES_KEY));
+  }
+  await Promise.all([...writes, tx.done]);
+}
+
+// --- plan changes waiting to be saved (from exercises added during a workout) -------------
+
+const PLAN_CHANGES_KEY = "pendingPlanChanges";
+
+export async function getPendingPlanChanges(): Promise<PlanChange[]> {
+  return ((await (await db()).get("appState", PLAN_CHANGES_KEY)) as PlanChange[] | undefined) ?? [];
+}
+
+/** Removes the given changes (saved, or impossible to save) and keeps any queued meanwhile. */
+export async function removePendingPlanChanges(done: PlanChange[]): Promise<void> {
+  const database = await db();
+  const tx = database.transaction("appState", "readwrite");
+  const queued = ((await tx.store.get(PLAN_CHANGES_KEY)) as PlanChange[] | undefined) ?? [];
+  const remaining = queued.filter((c) => !done.some((d) => JSON.stringify(d) === JSON.stringify(c)));
+  await Promise.all([remaining.length ? tx.store.put(remaining, PLAN_CHANGES_KEY) : tx.store.delete(PLAN_CHANGES_KEY), tx.done]);
 }
 
 // --- history ----------------------------------------------------------------

@@ -38,6 +38,10 @@ Weights can be shown and entered in **kg or lbs** (phone ⚙ or desktop Settings
 
 Link consecutive exercises in the desktop editor to make a **superset** (strength: A → B, then rest) or a **circuit** (timed: stations run round-robin for N rounds). Strength targets can use a rep range such as 8–12; the app suggests adding weight once you reach the top of the range on every set.
 
+### Adding an exercise mid-workout
+
+Tap **+ Add exercise** under the workout's list (or in the ⋯ menu) to add any exercise from your library to today's workout, up next. It gets the same target as in its own workout, the one you last did it in. If you change that target today, its own workout is updated when you finish. The finish screen also offers to **keep it** in this workout from now on. Plan updates made while offline are saved the next time the app is online.
+
 Phones and narrow screens open in workout mode, desktops in management mode. You can switch in Settings (phone: ⚙ on the home screen, desktop: Settings page).
 
 ## Stack

@@ -1,10 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { completeNextSet, createSession, finishSession } from "../../domain/session";
+import type { PlanChange } from "../../domain/planChanges";
 import { exercises, pull } from "../../test/fixtures";
 import { useFreshDb } from "../../test/freshDb";
 import {
   commitCompletedSession,
   getActiveSession,
+  getPendingPlanChanges,
+  removePendingPlanChanges,
   getRestTimer,
   importSessions,
   listSessions,
@@ -77,5 +80,28 @@ describe("history", () => {
     await reopenCompletedSession(reopened);
     expect(await listSessions()).toEqual([]);
     expect((await getActiveSession())?.id).toBe(s.id);
+  });
+});
+
+describe("plan changes from finished workouts", () => {
+  const change = (n: number): PlanChange => ({ kind: "target", workoutId: "w", itemId: `i${n}`, exerciseId: "e", targetKind: "timed", set: { sets: n }, unset: [] });
+
+  it("are queued with the finished session and removed once saved, keeping ones queued meanwhile", async () => {
+    await putActiveSession(createSession(pull, exercises));
+    await commitCompletedSession(finishSession(createSession(pull, exercises)), [change(1)]);
+    await commitCompletedSession(finishSession(createSession(pull, exercises)), [change(2)]);
+    expect(await getPendingPlanChanges()).toEqual([change(1), change(2)]);
+    expect(await getActiveSession()).toBeUndefined();
+
+    await removePendingPlanChanges([change(1)]);
+    expect(await getPendingPlanChanges()).toEqual([change(2)]);
+    await removePendingPlanChanges([change(2)]);
+    expect(await getPendingPlanChanges()).toEqual([]);
+  });
+
+  it("are not queued when finishing fails", async () => {
+    const bad = { ...finishSession(createSession(pull, exercises)), id: undefined } as unknown as Parameters<typeof commitCompletedSession>[0];
+    await expect(commitCompletedSession(bad, [change(1)])).rejects.toThrow();
+    expect(await getPendingPlanChanges()).toEqual([]);
   });
 });

@@ -22,6 +22,7 @@ import { selectDatabase } from "./storage/indexedDb";
 import { PeopleProvider, usePeople } from "./state/PeopleContext";
 import { ActiveWorkoutProvider } from "./state/ActiveWorkoutContext";
 import { ConfigProvider } from "./state/ConfigContext";
+import { PlanChangeSaver } from "./state/PlanChangeSaver";
 import { SyncProvider } from "./state/SyncContext";
 
 function Root() {
@@ -128,6 +129,7 @@ function PersonData({ personId, children }: { personId?: string; children: React
   useState(() => selectDatabase(dbNameForPerson(personId)));
   return (
     <ConfigProvider>
+      <PlanChangeSaver />
       <ActiveWorkoutProvider>
         <SyncProvider>{children}</SyncProvider>
       </ActiveWorkoutProvider>

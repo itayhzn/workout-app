@@ -31,6 +31,8 @@ import {
   unskipExercise,
   updateActivity,
   updatePrescription,
+  hasRecordedWork,
+  removeAddedExercise,
   updateSet,
   type PreviousPerformance,
 } from "../../domain/session";
@@ -51,6 +53,7 @@ import { useNow } from "../../hooks/useNow";
 import { primeAudio } from "../../services/feedback";
 import { useActiveWorkout } from "../../state/ActiveWorkoutContext";
 import { useConfig } from "../../state/ConfigContext";
+import { AddedTag } from "../../components/AddedTag";
 import { useSessions } from "../../state/history";
 import { useWeightUnit } from "../../state/units";
 import { PhoneHeader, PhoneScreen } from "./PhoneLayout";
@@ -107,8 +110,14 @@ function ExerciseHero({ ex }: { ex: SessionExercise }) {
             </span>
           )}
           {ex.status === "skipped" && <span className="font-display text-xs font-bold uppercase tracking-wider text-ink-3">Skipped</span>}
+          {ex.added && <AddedTag />}
         </div>
         <h1 className="mt-1 font-display text-2xl font-bold leading-tight">{ex.exerciseName}</h1>
+        {ex.added && (
+          <p className="mt-1 text-xs text-ink-2">
+            {ex.added.from ? <>Target changes also update {ex.added.from.workoutName} when you finish.</> : <>Added to today's workout only.</>}
+          </p>
+        )}
       </div>
     </div>
   );
@@ -164,6 +173,24 @@ function ExerciseNote({ ex }: { ex: SessionExercise }) {
         </div>
       )}
     </section>
+  );
+}
+
+/** Takes an exercise added by mistake back out of today's workout, before anything is recorded on it. */
+function RemoveAddedButton({ session, ex }: { session: WorkoutSession; ex: SessionExercise }) {
+  const { update } = useActiveWorkout();
+  const navigate = useNavigate();
+  if (!ex.added || hasRecordedWork(ex)) return null;
+  return (
+    <button
+      className="label self-center py-1 hover:text-ink"
+      onClick={() => {
+        navigate(`/workout/${session.id}`, { replace: true });
+        update((s) => removeAddedExercise(s, ex.id));
+      }}
+    >
+      Remove from today
+    </button>
   );
 }
 
@@ -267,9 +294,12 @@ function StrengthExercise({ session, ex, previous }: { session: WorkoutSession; 
               <button className="btn-primary h-14 w-full text-base shadow-volt" onClick={onComplete}>
                 <Check size={20} /> Complete set ({current.setNumber} of {ex.sets.length})
               </button>
-              <button className="label self-center py-1 hover:text-ink" onClick={() => update((s) => skipExercise(s, ex.id))}>
-                Skip exercise
-              </button>
+              <div className="flex justify-center gap-6">
+                <button className="label self-center py-1 hover:text-ink" onClick={() => update((s) => skipExercise(s, ex.id))}>
+                  Skip exercise
+                </button>
+                <RemoveAddedButton session={session} ex={ex} />
+              </div>
             </>
           ) : (
             <CompletionPanel session={session} ex={ex} onUndo={undoLast} />
@@ -639,6 +669,7 @@ function TimedExercise({ session, ex, previous }: { session: WorkoutSession; ex:
                 <button className="label py-1 hover:text-ink" onClick={() => update((s) => skipExercise(s, ex.id))}>
                   Skip exercise
                 </button>
+                {!running && <RemoveAddedButton session={session} ex={ex} />}
               </div>
             </>
           ) : (
@@ -830,6 +861,7 @@ function ActivityExercise({ session, ex, previous }: { session: WorkoutSession; 
               >
                 Skip exercise
               </button>
+              <RemoveAddedButton session={session} ex={ex} />
             </>
           )}
         </>
