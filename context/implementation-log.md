@@ -2,10 +2,79 @@
 
 A record of what was built, the decisions made along the way, and the bugs found and fixed, newest first. For how the app works today, see [`dev-onboarding.md`](dev-onboarding.md).
 
-**Current state (2026-09-30)**
+**Current state (2026-10-06)**
 - **Live** at `https://itayhzn.github.io/workout-app/`: the feature branch was merged to `main` (PR #3) and GitHub Pages deploys via GitHub Actions.
 - The private data repo `itayhzn/workout-data` is in use. People: Itay (the starter two-a-day plan plus a daily Posture Reset, with workouts syncing) and Gal (her own plan, see entry 8).
-- Tests: 101 passing (unit + integration). Typecheck and production build are clean.
+- Tests: 126 passing (unit + integration). Typecheck and production build are clean.
+
+---
+
+## 11. Adding an exercise during a workout — 2026-10-06
+
+This came from a real morning session. During Pull B, Itay's lower back ached after two bad nights' sleep, and he wanted to add a lower-back stretch (Child's Pose). It's in his Floor and Saturday Stretch workouts, but not in Pull B. There was no way to add an existing exercise to the workout in progress. (Creating a brand-new exercise on the phone is deliberately out of scope.)
+
+### Decisions (from the discussion)
+- **It goes "up next".** It goes right before the current exercise if that hasn't been started, otherwise right after it. It never goes inside a superset or circuit, or inside a running interval sequence.
+- **The target is the one from its own workout**, as if you were doing it there. "Its own workout" is the one it was last done in (from history). Otherwise it's the first workout in the plan that has it.
+- **Changing the added exercise's target also changes it in its own workout** when you finish.
+- **"Keep it in this workout"** is offered on the finish screen.
+
+### Features
+- **Adding** (phone `WorkoutPage`): a dashed **+ Add exercise** button under the list, and the same action in the ⋯ menu.
+  - `AddExerciseSheet`: search, up to 5 recently done exercises (leaving out ones already in this workout), then everything A–Z. Each row shows the target it will get and where it comes from ("1:00 · rest 10s · from Floor: Mobility + Core"). One tap adds it. The overview then scrolls it into view, because the button is at the bottom but the exercise goes in near the top.
+  - Exercises with no workout get the default target for their type and aren't linked to anything.
+  - When the exercise comes from a superset, it rests like the end of a round. The other members' rest is usually 0, which would mean no rest timer.
+- **Model:** `SessionExerciseBase.added?: { from?: PlanItemRef, startTarget, keep? }`.
+  - `from` is `{ workoutId, workoutName, itemId }`.
+  - `startTarget` is the target it started with, so only what changed today is written back.
+  - Optional, so there's no migration and no `SYNC_STATE_VERSION` bump. Older app versions ignore the field.
+  - The session exercise gets a fresh `newId()`, so the same exercise can be added twice.
+- **Domain:**
+  - `session.ts`: `upNextIndex`, `addExerciseToSession`, `removeAddedExercise`, `setKeepAddedExercise`, `hasRecordedWork`. The item → session-exercise code moved out of `createSession` into `sessionExerciseFor`, which both use.
+  - New `domain/planChanges.ts`: `sourceForAddedExercise`, `targetDiff`, `planChangesFromSession` and `applyPlanChanges`.
+- **"Added" tag** (`components/AddedTag.tsx`): on the overview tile and NOW card, on the exercise screen, and in history (`SessionDetail`).
+- **The exercise screen** says *"Target changes also update Floor: Mobility + Core when you finish"*, or "Added to today's workout only". **Remove from today** takes back an exercise added by mistake, as long as nothing is recorded on it and its timer isn't running. Exercises from the template still use Skip.
+- **Finish screen, "Added today":**
+  - Per added exercise: *"Updates Floor: Mobility + Core: 1:00 · rest 10s → 1:30 · rest 10s"* (or "Same target as in …").
+  - A **Keep it in Pull B from now on** checkbox, stored as `added.keep` in the session.
+- **Writing back to the plan, offline-safe.**
+  - `finish` turns the session into `PlanChange`s:
+    - `target`: only the fields changed today, as `set` and `unset`.
+    - `add`: the kept exercise goes in after the nearest earlier plan item, after its whole superset. The session exercise id becomes the new item id, so applying it twice adds it once.
+  - `commitCompletedSession(session, planChanges)` stores them in `appState.pendingPlanChanges` in the **same transaction** as the finished session.
+  - `PlanChangeSaver` (mounted in `PersonData`) saves them through the new `ConfigContext.updateWorkout(id, fn)`, which always starts from the latest copy of the plan. It runs when the plan loads or reloads, right after a finish, and when the device comes back online.
+  - A save conflict reloads the plan, and that runs it again. A change that can never be valid (e.g. the exercise was deleted) is dropped. A workout or item that's gone is skipped.
+  - Applying only the changed fields means an edit made on the desktop in the meantime (e.g. a different rest) survives.
+
+### Tests added (126 total)
+- `domain/__tests__/addExercise.test.ts` (20):
+  - **Placement:** before an unstarted current exercise, after one under way, never splitting a superset, after a running interval sequence, at the end when everything is done.
+  - **Adding:** inputs aren't mutated and the session doesn't share the target object; the same exercise can be added twice.
+  - **Remove:** refused once work is recorded, or for exercises from the template.
+  - **Finish and resume:** the added exercise survives both.
+  - **Target choice:** from the last workout it was done in; followed back through an earlier addition; the first workout that has it when that one was deleted; the default target when no workout has it; superset rest.
+  - **Plan changes:** only changed fields are written, so a concurrent desktop edit stays; a cleared weight is cleared; nothing is written when nothing changed; keep goes after a whole superset, at the start, or next to another kept exercise, and at the end if the item before it is gone; applying twice changes nothing; a removed item is left alone.
+- `storage/__tests__/indexedDb.test.ts`: plan changes are queued with the finished session, and removing them keeps ones queued meanwhile; nothing is queued when finishing fails.
+- `__tests__/addExercise.test.tsx` (UI):
+  - The full flow: add Child's Pose mid-Pull B (it lands between the warm-up and pull-ups, with Floor's target); change 1:00 → 1:30; mark it done; tick keep; finish. Floor's item is now 1:30, Pull B has Child's Pose after the warm-up, and history shows it tagged "Added".
+  - Remove from today.
+  - Changes queued by a workout finished offline are saved on the next app open.
+
+### Checked in a browser
+At 400px with the starter plan:
+- Started Pull B and did a set of Assisted Pull-Ups (rest timer running).
+- **+ Add exercise** → searched "child" → **Add Child's Pose** ("1:00 · rest 10s · from Floor: Mobility + Core"). It appeared right after Pull-Ups, tagged Added, scrolled into view.
+- A second run on Legs A also checked the exercise screen note, Work 1:00 → 1:30, Remove from today, the finish screen's "Updates … → 1:30" line and the keep checkbox, the history "Added" tag, and the saved plan: Floor's Child's Pose became 90 s and Legs A got Child's Pose first.
+
+### Bugs found and fixed
+| Bug | Fix |
+|---|---|
+| After tapping a row, nothing seemed to happen: the sheet closed at the bottom of the list, but the exercise went in near the top | The overview scrolls the added exercise into view |
+| (Design) Saving plan changes from a stale plan in memory could undo an earlier change to the same workout | `ConfigContext.updateWorkout(id, fn)` applies the change to the latest copy |
+
+### Ideas not built
+- Showing that plan changes are still waiting (e.g. finished offline) somewhere in the UI. Today they're retried silently, like history sync.
+- "At the end" as a second placement for a cool-down. Only "up next" was asked for.
 
 ---
 

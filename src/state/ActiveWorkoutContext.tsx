@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
+  addExerciseToSession,
   completeNextSet,
   createSession,
   finishSession,
@@ -9,6 +10,7 @@ import {
   type CompleteSetResult,
 } from "../domain/session";
 import { supersetNext } from "../domain/groups";
+import { planChangesFromSession, type AddedExerciseSource } from "../domain/planChanges";
 import {
   applyIntervalProgress,
   buildIntervalPlan,
@@ -20,9 +22,10 @@ import {
   skipIntervalStep,
   startIntervals as startIntervalState,
 } from "../domain/intervals";
+import { newId } from "../domain/ids";
 import type { Exercise, IntervalTimerState, RestTimerState, Workout, WorkoutSession } from "../domain/types";
 import { countdownTick, holdWakeLock, intervalPhaseFeedback } from "../services/feedback";
-import { requestSync } from "../services/syncEvents";
+import { notifyPlanChangesQueued, requestSync } from "../services/syncEvents";
 import {
   clearActiveWorkout,
   commitCompletedSession,
@@ -71,6 +74,8 @@ interface ActiveWorkoutValue {
   update: (fn: (s: WorkoutSession) => WorkoutSession) => void;
   /** `nextExerciseId` is set inside a superset: the member to move to next. */
   completeSet: (exerciseId: string, values: { weightKg?: number; reps?: number }) => (CompleteSetResult & { nextExerciseId?: string }) | undefined;
+  /** Adds a library exercise to today's workout, up next (after a running interval sequence). Returns its session id. */
+  addExercise: (exercise: Exercise, source: AddedExerciseSource) => string | undefined;
   startRest: (exerciseId: string, setNumber: number, seconds: number) => void;
   adjustRest: (deltaSeconds: number) => void;
   clearRest: () => void;
@@ -178,6 +183,18 @@ export function ActiveWorkoutProvider({ children }: { children: ReactNode }) {
       const cur = sessionRef.current;
       if (!cur) return;
       applySession(fn(cur));
+    },
+    [applySession],
+  );
+
+  const addExercise = useCallback(
+    (exercise: Exercise, source: AddedExerciseSource) => {
+      const cur = sessionRef.current;
+      if (!cur) return undefined;
+      const busyIds = new Set(intervalRef.current?.steps.map((st) => st.exerciseId) ?? []);
+      const id = newId();
+      applySession(addExerciseToSession(cur, exercise, source.target, { from: source.from, busyIds, id }));
+      return id;
     },
     [applySession],
   );
@@ -318,7 +335,9 @@ export function ActiveWorkoutProvider({ children }: { children: ReactNode }) {
       const done = finishSession(notes !== undefined ? setSessionNotes(progressed, notes) : progressed);
       await writeChain.current;
       // If this throws, the active session is still intact in storage and in memory.
-      await commitCompletedSession(done);
+      // Target changes and "keep" choices for added exercises are queued with it, then saved to the plan.
+      const planChanges = planChangesFromSession(done);
+      await commitCompletedSession(done, planChanges);
       sessionRef.current = undefined;
       timerRef.current = undefined;
       intervalRef.current = undefined;
@@ -328,6 +347,7 @@ export function ActiveWorkoutProvider({ children }: { children: ReactNode }) {
       backup(undefined);
       notifyHistoryChanged();
       requestSync();
+      if (planChanges.length) notifyPlanChangesQueued();
       return done;
     },
     [],
@@ -375,6 +395,7 @@ export function ActiveWorkoutProvider({ children }: { children: ReactNode }) {
       start,
       update,
       completeSet,
+      addExercise,
       startRest,
       adjustRest,
       clearRest,
@@ -389,7 +410,7 @@ export function ActiveWorkoutProvider({ children }: { children: ReactNode }) {
       discard,
       resumeSession,
     }),
-    [ready, session, restTimer, intervalTimer, storageError, start, update, completeSet, startRest, adjustRest, clearRest, startIntervals, pause, resume, skipInterval, backInterval, extendInterval, stopIntervals, finish, discard, resumeSession],
+    [ready, session, restTimer, intervalTimer, storageError, start, update, completeSet, addExercise, startRest, adjustRest, clearRest, startIntervals, pause, resume, skipInterval, backInterval, extendInterval, stopIntervals, finish, discard, resumeSession],
   );
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

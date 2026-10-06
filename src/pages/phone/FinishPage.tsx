@@ -1,10 +1,15 @@
-import { Check, StickyNote } from "lucide-react";
+import { Check, CopyPlus, StickyNote } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { SessionExerciseResult, SessionStatTiles } from "../../components/SessionDetail";
 import { Banner, Label } from "../../components/ui";
-import { finishSession, sessionStats, setSessionNotes } from "../../domain/session";
-import type { WorkoutSession } from "../../domain/types";
+import { AddedTag } from "../../components/AddedTag";
+import { formatTarget } from "../../domain/format";
+import { targetDiff } from "../../domain/planChanges";
+import { finishSession, sessionStats, setKeepAddedExercise, setSessionNotes } from "../../domain/session";
+import type { SessionExercise, WorkoutSession } from "../../domain/types";
+import { useConfig } from "../../state/ConfigContext";
+import { useWeightUnit } from "../../state/units";
 import { useNow } from "../../hooks/useNow";
 import { useActiveWorkout } from "../../state/ActiveWorkoutContext";
 import { PhoneHeader, PhoneScreen } from "./PhoneLayout";
@@ -66,6 +71,7 @@ function FinishSummary({ session }: { session: WorkoutSession }) {
         </Banner>
       )}
       <SessionStatTiles session={preview} />
+      <AddedToday session={session} />
 
       <section className="card p-4">
         <Label className="mb-2 flex items-center gap-1.5">
@@ -86,5 +92,64 @@ function FinishSummary({ session }: { session: WorkoutSession }) {
         <SessionExerciseResult key={ex.id} ex={ex} index={i} />
       ))}
     </PhoneScreen>
+  );
+}
+
+/**
+ * Exercises added during the workout: whether to keep each one in this workout from now on, and the
+ * target changes that will be written back to the workout it came from.
+ */
+function AddedToday({ session }: { session: WorkoutSession }) {
+  const { update } = useActiveWorkout();
+  const { workoutById } = useConfig();
+  const added = session.exercises.filter((e) => e.added);
+  if (!added.length) return null;
+  const canKeep = !!workoutById(session.workoutId);
+  return (
+    <section className="card p-4">
+      <Label className="mb-1 flex items-center gap-1.5">
+        <CopyPlus size={12} /> Added today
+      </Label>
+      <ul className="flex flex-col divide-y divide-line">
+        {added.map((ex) => (
+          <li key={ex.id} className="flex flex-col gap-2 py-3">
+            <div className="font-semibold">
+              {ex.exerciseName}
+              <AddedTag className="ml-2" />
+            </div>
+            <PlanUpdateLine ex={ex} />
+            {canKeep && (
+              <label className="flex items-center gap-3 text-sm">
+                <input
+                  type="checkbox"
+                  className="h-5 w-5 shrink-0 accent-[var(--color-volt)]"
+                  checked={!!ex.added?.keep}
+                  onChange={(e) => update((s) => setKeepAddedExercise(s, ex.id, e.target.checked))}
+                />
+                Keep it in {session.workoutName} from now on
+              </label>
+            )}
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+function PlanUpdateLine({ ex }: { ex: SessionExercise }) {
+  const unit = useWeightUnit();
+  const from = ex.added?.from;
+  if (!from || !ex.added) return null;
+  const changed = !!targetDiff(ex.added.startTarget, ex.prescribed);
+  return (
+    <p className="text-sm text-ink-2 tnum">
+      {changed ? (
+        <>
+          Updates {from.workoutName}: {formatTarget(ex.added.startTarget, unit)} → <span className="text-ink">{formatTarget(ex.prescribed, unit)}</span>
+        </>
+      ) : (
+        <>Same target as in {from.workoutName}.</>
+      )}
+    </p>
   );
 }

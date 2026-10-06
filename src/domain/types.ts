@@ -143,6 +143,26 @@ interface SessionExerciseBase {
   missingDefinition?: boolean;
   /** Copied from WorkoutExercise.group (superset / circuit). */
   group?: string;
+  /** Set when the exercise was added during the workout rather than coming from the workout's template. */
+  added?: AddedExerciseInfo;
+}
+
+/** The plan item an added exercise was taken from: the workout it's done in normally ("its own workout"). */
+export interface PlanItemRef {
+  workoutId: string;
+  /** Snapshot, so history can say where it came from after renames. */
+  workoutName: string;
+  /** WorkoutExercise.id inside that workout. */
+  itemId: string;
+}
+
+export interface AddedExerciseInfo {
+  /** Where the target came from. Changes to today's target are written back there when the workout is finished. */
+  from?: PlanItemRef;
+  /** The target it started with today, so only what was actually changed is written back. */
+  startTarget: ExerciseTarget;
+  /** Chosen on the finish screen: also add it to this session's workout from now on. */
+  keep?: boolean;
 }
 
 export interface StrengthSessionExercise extends SessionExerciseBase {

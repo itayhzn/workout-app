@@ -110,6 +110,7 @@ There are two kinds of data, and they are stored and saved in completely differe
   - `swimming`: `durationMinutes?`, `distanceMeters?`
 - **`WeeklySchedule`**: `Record<Weekday, workoutId[]>`, with several workouts allowed per day. It never stores whether a workout was done.
 - **`WorkoutSession`**: a *snapshot* made when a workout starts. It copies `workoutName`, `workoutType`, each exercise's name and a deep copy of each target (`prescribed`). History must stay readable even if the template is renamed or deleted later. `status` is `active | completed | abandoned`.
+- **Added exercises**: a session exercise with `added` was added during the workout (phone **+ Add exercise**), not copied from the template. `added.from` points at the plan item it came from (its own workout), `added.startTarget` is the target it started with, and `added.keep` is the finish screen's "keep it in this workout". See §7.
 - **Session exercises**: `StrengthSessionExercise` and `TimedSessionExercise` are *set-based* (they have a `sets[]` array). `CardioSessionExercise` and `SwimmingSessionExercise` are *activities* (actual duration/distance, plus an optional running stopwatch `timerStartedAt`). Use `isSetBased(ex)` rather than checking `kind === "strength"`.
 
 ### Invariants you must keep
@@ -130,10 +131,10 @@ There are two kinds of data, and they are stored and saved in completely differe
 | `configCache` | `"config"` | Last good config + `source` (`static`/`github`/`local`) + `localEdits` flag |
 | `workoutSessions` | `id` (index `completedAt`) | Completed sessions (history), including ones downloaded from other devices |
 | `activeWorkout` | `"session"`, `"restTimer"`, `"intervalTimer"` | The one in-progress session and its timers |
-| `appState` | free-form | `lastSelectedWorkout`; `syncState` (last seen SHA per month file, last sync time, whether the first upload has been done) |
+| `appState` | free-form | `lastSelectedWorkout`; `syncState` (last seen SHA per month file, last sync time, whether the first upload has been done); `pendingPlanChanges` (plan changes from added exercises, waiting to be saved) |
 | `syncQueue` | `sessionId` | Sessions waiting to be uploaded by sync (finished workouts, imports, first-sync backfill) |
 
-`commitCompletedSession` moves a finished session into history, clears the active state and adds the session to `syncQueue` in **one transaction**. If it fails, the active workout is left untouched.
+`commitCompletedSession` moves a finished session into history, clears the active state, adds the session to `syncQueue` and queues its plan changes (if any) in **one transaction**. If it fails, the active workout is left untouched.
 
 When you change the schema, increase `DB_VERSION` and handle the migration in `upgrade()`.
 
@@ -205,6 +206,12 @@ The active person's history and preferences sync through the data repo. The layo
   - A **global ticker** in the provider (every 200ms) calls `applyIntervalProgress` to record finished work steps as completed sets, including steps that ended while the screen was off. It plays cues only when it sees a step change live, and clears the timer when the sequence ends. It also holds a **screen wake lock** while running.
 - **Audio on iOS.** `primeAudio()` must be called from a user tap (Complete Set, Start intervals, Pause/Resume) or later beeps are blocked.
 - **Resuming a finished workout.** The phone history detail offers **Resume workout** when a finished session has skipped work (`hasUnfinishedWork`). `reopenSession` makes it active again with skipped sets and exercises reopened, and adds the time since it finished to `pausedMs`. `sessionDurationMs` subtracts `pausedMs`, so the break doesn't count as workout time. `reopenCompletedSession` moves it from history back to the active slot in one transaction. Resuming is refused while another workout is in progress.
+- **Adding an exercise mid-workout** (`AddExerciseSheet`, `addExercise` in the provider):
+  - `sourceForAddedExercise` (`domain/planChanges.ts`) picks its target: the workout it was last done in (from history), else the first workout in the plan that has it, else the default target for its type.
+  - `addExerciseToSession` puts it "up next" (`upNextIndex`: before the current exercise if that hasn't been started, else after it). It never goes inside a group or a running interval sequence.
+  - **On finish**, `planChangesFromSession` turns target changes into `target` changes (only the fields changed, for the item in `added.from`) and "keep" into `add` changes (for the session's workout). They're queued with the finished session.
+  - `PlanChangeSaver` saves them with `updateWorkout` when the plan is ready, after a finish, and when the device comes back online. They're kept until they save, so finishing offline is fine.
+  - `applyPlanChanges` is safe to apply twice. Keep it that way: changes can be retried.
 - **Route guard.** `SessionGuard` checks `/workout/:sessionId` routes. If the session was already finished it redirects to `/history/:id`; otherwise it shows "Workout not found".
 
 ---

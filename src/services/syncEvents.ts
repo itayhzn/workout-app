@@ -31,3 +31,15 @@ export function onPersonChanged(fn: () => void): () => void {
   window.addEventListener(PERSON_CHANGED, fn);
   return () => window.removeEventListener(PERSON_CHANGED, fn);
 }
+
+const PLAN_CHANGES_QUEUED = "kinetic:plan-changes-queued";
+
+/** A finished workout queued changes to the plan (from exercises added during it). */
+export function notifyPlanChangesQueued(): void {
+  window.dispatchEvent(new Event(PLAN_CHANGES_QUEUED));
+}
+
+export function onPlanChangesQueued(fn: () => void): () => void {
+  window.addEventListener(PLAN_CHANGES_QUEUED, fn);
+  return () => window.removeEventListener(PLAN_CHANGES_QUEUED, fn);
+}

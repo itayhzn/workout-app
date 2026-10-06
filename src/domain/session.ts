@@ -1,4 +1,4 @@
-import { groupTurn } from "./groups";
+import { groupRuns, groupTurn } from "./groups";
 import { newId } from "./ids";
 import {
   isSetBased,
@@ -14,7 +14,11 @@ import {
   type TimedSessionExercise,
   type TimedSetResult,
   type TimedTarget,
+  type AddedExerciseInfo,
+  type ExerciseTarget,
+  type PlanItemRef,
   type Workout,
+  type WorkoutExercise,
   type WorkoutSession,
 } from "./types";
 
@@ -34,30 +38,32 @@ export function createSession(
     startedAt: now.toISOString(),
     ...leaveByFor(workout.leaveBy, now),
     status: "active",
-    exercises: workout.exercises.map((item): SessionExercise => {
-      const def = byId.get(item.exerciseId);
-      const base = {
-        id: item.id,
-        exerciseId: item.exerciseId,
-        exerciseName: def?.name ?? `Unknown exercise (${item.exerciseId})`,
-        status: "pending" as const,
-        ...(def ? {} : { missingDefinition: true }),
-        ...(item.group ? { group: item.group } : {}),
-      };
-      // Deep-copy the target so the session never aliases the mutable template.
-      const target = structuredClone(item.target);
-      switch (target.kind) {
-        case "strength":
-          return { ...base, kind: "strength", prescribed: target, sets: initialSets(target) };
-        case "timed":
-          return { ...base, kind: "timed", prescribed: target, sets: initialTimedSets(target) };
-        case "cardio":
-          return { ...base, kind: "cardio", prescribed: target };
-        case "swimming":
-          return { ...base, kind: "swimming", prescribed: target };
-      }
-    }),
+    exercises: workout.exercises.map((item) => sessionExerciseFor(item, byId.get(item.exerciseId))),
   };
+}
+
+/** A template item as it starts in a session: pending, with a deep copy of its target. */
+function sessionExerciseFor(item: WorkoutExercise, def: Exercise | undefined): SessionExercise {
+  const base = {
+    id: item.id,
+    exerciseId: item.exerciseId,
+    exerciseName: def?.name ?? `Unknown exercise (${item.exerciseId})`,
+    status: "pending" as const,
+    ...(def ? {} : { missingDefinition: true }),
+    ...(item.group ? { group: item.group } : {}),
+  };
+  // Deep-copy the target so the session never aliases the mutable template.
+  const target = structuredClone(item.target);
+  switch (target.kind) {
+    case "strength":
+      return { ...base, kind: "strength", prescribed: target, sets: initialSets(target) };
+    case "timed":
+      return { ...base, kind: "timed", prescribed: target, sets: initialTimedSets(target) };
+    case "cardio":
+      return { ...base, kind: "cardio", prescribed: target };
+    case "swimming":
+      return { ...base, kind: "swimming", prescribed: target };
+  }
 }
 
 /** Deadline on the session's own day. No deadline if that time has already passed when starting. */
@@ -583,4 +589,72 @@ export function lastPerformance(
     if (ex) return { sessionId: s.id, date: s.completedAt!, exercise: ex };
   }
   return undefined;
+}
+
+// ---------------------------------------------------------------------------
+// Exercises added during a workout
+// ---------------------------------------------------------------------------
+
+/**
+ * Where an exercise added "up next" goes: right before the current exercise if it hasn't been started,
+ * otherwise right after it. Never inside a superset/circuit, and never inside the exercises a running
+ * interval sequence is working through (`busyIds`).
+ */
+export function upNextIndex(session: WorkoutSession, busyIds: ReadonlySet<string> = new Set()): number {
+  const runs = groupRuns(session.exercises);
+  const current = currentExercise(session);
+  let index = session.exercises.length;
+  let start = 0;
+  for (const run of runs) {
+    if (current && run.some((e) => e.id === current.id)) {
+      index = run.some((e) => e.status !== "pending") ? start + run.length : start;
+      break;
+    }
+    start += run.length;
+  }
+  // A running interval sequence keeps going; the new exercise comes after it.
+  start = 0;
+  for (const run of runs) {
+    start += run.length;
+    if (run.some((e) => busyIds.has(e.id))) index = Math.max(index, start);
+  }
+  return index;
+}
+
+/** Adds a library exercise to today's workout only (the template is untouched), up next. */
+export function addExerciseToSession(
+  session: WorkoutSession,
+  exercise: Exercise,
+  target: ExerciseTarget,
+  opts: { from?: PlanItemRef; busyIds?: ReadonlySet<string>; id?: string } = {},
+): WorkoutSession {
+  const ex = sessionExerciseFor({ id: opts.id ?? newId(), exerciseId: exercise.id, target }, exercise);
+  const added: AddedExerciseInfo = { ...(opts.from ? { from: { ...opts.from } } : {}), startTarget: structuredClone(target) };
+  const at = upNextIndex(session, opts.busyIds);
+  const exercises = [...session.exercises];
+  exercises.splice(at, 0, { ...ex, added });
+  return { ...session, exercises };
+}
+
+/** True when nothing has been recorded on the exercise yet. */
+export function hasRecordedWork(ex: SessionExercise): boolean {
+  return isSetBased(ex) ? ex.sets.some((s) => s.status === "completed") : hasActivityData(ex);
+}
+
+/** Takes an added exercise back out of today's workout (added by mistake). Refused once work is recorded on it. */
+export function removeAddedExercise(session: WorkoutSession, exerciseId: string): WorkoutSession {
+  const ex = findExercise(session, exerciseId);
+  if (!ex) throw new Error(`Exercise ${exerciseId} is not part of this session`);
+  if (!ex.added) throw new Error("Only exercises added during the workout can be removed; skip it instead");
+  if (hasRecordedWork(ex)) throw new Error("This exercise already has recorded work");
+  return { ...session, exercises: session.exercises.filter((e) => e.id !== exerciseId) };
+}
+
+/** The finish screen's "Keep it in this workout" choice for an added exercise. */
+export function setKeepAddedExercise(session: WorkoutSession, exerciseId: string, keep: boolean): WorkoutSession {
+  return mapExercise(session, exerciseId, (ex) => {
+    if (!ex.added) return ex;
+    const { keep: _k, ...rest } = ex.added;
+    return { ...ex, added: keep ? { ...rest, keep: true } : rest };
+  });
 }
